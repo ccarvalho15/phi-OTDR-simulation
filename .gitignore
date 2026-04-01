@@ -1,0 +1,18 @@
+# Pastas e ficheiros temporários do MATLAB
+*.asv
+*.m~
+*.slxc
+*.mex*
+*.p
+*.p.ParseTree
+*.MLX
+
+# Figuras e dados (opcional - se não quiseres carregar ficheiros pesados)
+*.mat
+*.fig
+
+# Logs e diagnósticos
+slprj/
+codegentemp/
+_out/
+matlab_crash.dump.*
