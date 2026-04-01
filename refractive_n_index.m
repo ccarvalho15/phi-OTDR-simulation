@@ -30,14 +30,39 @@ for i = 1:Nz-1
 end
 
 %% ------------- DIRECT REFRACTIVE INDEX PERTURBATION ------
-% Creating a manual refraxtive index change vector
+% Creating a manual refractive index change vector
 delta_n_pert = zeros(1, Nz);
 
-% Apply a refractive index increase of 1e-4 between 1500 m and 1510 m
-delta_n_pert(round(1500/dz):round(1510/dz)) = 1e-4;
+% Random position
+pert_length = 10; % 10 meters
 
-% Perturbed profile (original + manual change)
+% Pick a random start between 0 and (L - pert_length)
+random_start = (L - pert_length) * rand();
+random_end = random_start + pert_length;
+
+% Convert meters to indices
+start_idx = round(random_start/dz);
+
+% Boundary check
+if start_idx < 1 
+    start_idx = 1;
+end
+end_idx = start_idx + round(pert_length/dz);
+
+% Random magnitude (between 1e-5 and 1e-4)
+min_mag = 1e-5;
+max_mag = 1e-4;
+random_mag = min_mag + (max_mag - min_mag) * rand();
+
+% Apply a refractive index
+delta_n_pert(start_idx:end_idx) = random_mag;
+
+% Perturbed profile
 n_pert = n + delta_n_pert;
+
+% Print info to console
+fprintf('Perturbation at: %.1f m to %.1f m\n', random_start, random_end);
+fprintf('Applied Delta_n: %.2e\n', random_mag);
 
 %% SIMULATION OF STATIC MEASUREMENTS
 freq_range = 1000e6;        % Frequency scanning range (1000 MHz)
@@ -107,7 +132,7 @@ xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
 title('3D Cross-Correlation Map');
 rotate3d on;
 % Distance
-xlim([1400 1600]); 
+xlim([max(0, random_start - 50) min(L, random_end + 50)]);
 
 % Frequency shift
 ylim([-500 500]); 
