@@ -16,3 +16,5 @@ slprj/
 codegentemp/
 _out/
 matlab_crash.dump.*
+
+/refractive_index_n.m
