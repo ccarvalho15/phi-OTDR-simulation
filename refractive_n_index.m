@@ -6,7 +6,7 @@ lambda0 = 1550e-9;          % Central wavelength (m)
 nu0 = c/lambda0;            % Central optical frequency (Hz)
 n_ave = 1.456;              % Average refractive index of the silica fiber
 
-L = 1000;                   % Total fiber length (m)
+L = 1500;                   % Total fiber length (m)
 dz = 0.1;                   % Spatial sampling interval (m)
 z = 0:dz:L-dz;              % Distance vector
 Nz = length(z);
