@@ -68,8 +68,8 @@ delta_n_pert = zeros(1, Nz);
 
 % CONFIGURATION OF SENSING EVENTS
 num_events = 5;         % Number of discrete perturbation zones
-pert_length = 5;        % Spatial width of each perturbation event (m)
-spacing = 50;          % Spatial separation between events (m)
+pert_length = 2;        % Spatial width of each perturbation event (m)
+spacing = 4;          % Spatial separation between events (m)
 
 fprintf(['Number of events: %d | Width of each event: %.2f m | Spacing (Nz): ' ...
     '%d m\n'], num_events, pert_length, spacing);
@@ -117,16 +117,18 @@ switch choice
         fprintf('No selection made. Defaulting to Option A.\n');
 end
 
-%%
+%% 
+% Defining the sensing zone starting point (e.g., L-30 meters)
+sensing_zone = L - 30;
 
 % Check if defined events fit within total fiber length L
 total = (num_events * pert_length) + ((num_events - 1) * spacing);
-if total > L
-    error('Event configuration exceeds fiber length.')
+if total > 30
+    error('Event configuration exceeds the allocated 30m sensing zone.')
 end
 
 % Randomized placement of the event sequence along the fiber
-random_start = (L - total) * rand();
+random_start = sensing_zone + (30 - total) * rand();
 first_event = random_start;
 last_event = random_start + total;
 
@@ -280,7 +282,7 @@ view(35, 45); colormap('jet'); colorbar;
 xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
 title('3D Cross-Correlation Map');
 rotate3d on;
-xlim([max(0, first_event - 50) min(L, last_event + 50)]);  % Fiber length
+xlim([max(210, first_event - 50) min(L, last_event + 50)]);  % Fiber length
 ylim([-250 250]); % Frequency shift window
 zlim([-0.5 1]); % Correlation magnitude scale
 
