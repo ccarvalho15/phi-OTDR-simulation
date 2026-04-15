@@ -13,7 +13,7 @@ nu0 = c/lambda0;            % Central optical frequency (Hz)
 
 % FIBER PROPERTIES (modeled as a 1D waveguide)
 n_ave = 1.456;              % Average refractive index of the silica fiber
-L = 1000;                   % Total fiber length (m)
+L = 240;                    % Total fiber length (m) >>>>>>>>>>>>>  VALOR REAL DE LABORATÓRIO
 alpha = 0;                  % Fiber attenuation (neglected to explore intrinsic backscatter properties)
 
 % SPATIAL SAMPLING AND RESOLUTION
@@ -67,22 +67,57 @@ end
 delta_n_pert = zeros(1, Nz);
 
 % CONFIGURATION OF SENSING EVENTS
-num_events = 2;         % Number of discrete perturbation zones
+num_events = 5;         % Number of discrete perturbation zones
 pert_length = 5;        % Spatial width of each perturbation event (m)
-spacing = 250;          % Spatial separation between events (m)
+spacing = 50;          % Spatial separation between events (m)
 
 fprintf(['Number of events: %d | Width of each event: %.2f m | Spacing (Nz): ' ...
     '%d m\n'], num_events, pert_length, spacing);
 
-% --- MAGNITUDE TRADE-OFF (delta_n vs. freq_range) ---
-% PERTURBATION EQUATION: delta_nu / nu0 = - delta_n / n_ave
-% The measured frequency shift (delta_nu) is directly proportional to index variation.
-% RULE: A delta_n of 1e-4 causes shifts of ~13 GHz. To keep the signal within a 
-% realistic observation window (e.g., 1 GHz) and avoid aliasing in the 
-% cross-correlation algorithm, we use values ~10^-7 (tens of MHz).
+%%
+% --- MAGNITUDE TRADE-OFF (delta_n vs. Correlation Bandwidth) ---
+% The speckle pattern generates a correlation peak with a finite bandwidth (FWHM).
+% For a pulse width of 10 ns (d ~ 1.03 m), the bandwidth is approximately:
+% FWHM = c / (2 * n_ave * d) ~= 100 MHz.
+%
+% Option A (Realistic): delta_n = 1e-7 -> Shift ~= 19 MHz.
+% The shift occurs *within* the correlation peak width, appearing as a slight 
+% deformation in the 3D surface plot.
+%
+% Option B (Visual): delta_n > 7.5e-7 -> Shift > 100 MHz.
+% The shift moves the peak *outside* the original bandwidth, making the 
+% sensing event visually distinct in the 'surf' and 'contour' maps.
 
-min_mag = 1e-7; 
-max_mag = 5e-7;
+% --- INTERACTIVE MAGNITUDE SELECTION ---
+% This dialog allows choosing between realistic micro-strains or visually prominent peaks.
+choice = questdlg('Select Perturbation Magnitude Style:', ...
+	'Simulation Settings', ...
+	'Option A: Realistic (Micro-events)', 'Option B: Visual (Distinct Peaks)', 'Option A: Realistic (Micro-events)');
+
+% Handle the response and apply the corresponding magnitude scaling
+switch choice
+    case 'Option A: Realistic (Micro-events)'
+        % delta_n ~ 1e-7 generates shifts of ~19 MHz.
+        % Note: These shifts stay within the correlation bandwidth (~100 MHz).
+        min_mag = 1e-7; 
+        max_mag = 5e-7;
+        fprintf('Configuration: Option A selected (Realistic Micro-events).\n');
+        
+    case 'Option B: Visual (Distinct Peaks)'
+        % delta_n ~ 5e-7 to 1e-6 generates shifts of ~95 to 190 MHz.
+        % These values force the peak to move outside the FWHM of the correlation mountain.
+        min_mag = 5e-7; 
+        max_mag = 1e-6;
+        fprintf('Configuration: Option B selected (Visually Prominent Peaks).\n');
+        
+    otherwise
+        % Default fallback if the window is closed without selection
+        min_mag = 1e-7; 
+        max_mag = 5e-7;
+        fprintf('No selection made. Defaulting to Option A.\n');
+end
+
+%%
 
 % Check if defined events fit within total fiber length L
 total = (num_events * pert_length) + ((num_events - 1) * spacing);
@@ -245,6 +280,9 @@ view(35, 45); colormap('jet'); colorbar;
 xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
 title('3D Cross-Correlation Map');
 rotate3d on;
+xlim([max(0, first_event - 50) min(L, last_event + 50)]);  % Fiber length
+ylim([-250 250]); % Frequency shift window
+zlim([-0.5 1]); % Correlation magnitude scale
 
 %%
 % --- FIGURE 3: 2D Contour Map with Peak Tracking ---
@@ -264,7 +302,6 @@ title('2D Correlation Map (Top View with Peak Trace)');
 % Focus the view on the perturbed regions for better detail
 xlim([max(0, first_event - 50) min(L, last_event + 50)]); 
 ylim([-250 250]);
-
 %%
 % --- FIGURE 4: Summary Overview ---
 % Combined plot for comparative analysis of spatial and spectral data.
