@@ -13,8 +13,11 @@ nu0 = c/lambda0;            % Central optical frequency (Hz)
 
 % FIBER PROPERTIES (modeled as a 1D waveguide)
 n_ave = 1.456;              % Average refractive index of the silica fiber
-L = 240;                    % Total fiber length (m) >>>>>>>>>>>>>  VALOR REAL DE LABORATÓRIO
-alpha = 0;                  % Fiber attenuation (neglected to explore intrinsic backscatter properties)
+L = 240;                    % Total fiber length used on the lab (m) 
+
+% Fiber attenuation :: Ideal Fiber = 0 m-1
+%                   :: Standard Fiber (Typical @ 1550nm) = 0.2 m-1
+alpha = 0.2;
 
 % SPATIAL SAMPLING AND RESOLUTION
 dz = 0.05;                  % Spatial sampling interval (m)
@@ -30,7 +33,8 @@ fprintf('\n--- Fiber Simulation Initialization ---\n');
 fprintf(['Fiber Length (L): %d m | ' ...
     'Spatial Resolution (d): %.2f m | ' ...
     'Total Spatial Points (Nz): %d | ' ...
-    'Number of Scattering Segments (M): %d\n'], L, d, Nz, M);
+    'Number of Scattering Segments (M): %d | ' ...
+    'Attenuation (alpha): %.2f m-1\n'], L, d, Nz, M, alpha);
 
 %% ----- 2. GENERATION OF STOCHASTIC RAYLEIGH SCATTERING CENTERS -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -62,6 +66,8 @@ end
 % - Following the approach of Lu & Thomas, environmental perturbations 
 % (e.g., strain or temperature) are modeled as localized modulations of the 
 % refractive index profile.
+% - Based on Lu & Thomas, temperature changes modulate the phase via dn/dT
+% - For Silica: dn/dT approx. 1.1e-5 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
 delta_n_pert = zeros(1, Nz);
@@ -69,7 +75,7 @@ delta_n_pert = zeros(1, Nz);
 % CONFIGURATION OF SENSING EVENTS
 num_events = 5;         % Number of discrete perturbation zones
 pert_length = 2;        % Spatial width of each perturbation event (m)
-spacing = 4;          % Spatial separation between events (m)
+spacing = 3.5;          % Spatial separation between events (m)
 
 fprintf(['Number of events: %d | Width of each event: %.2f m | Spacing (Nz): ' ...
     '%d m\n'], num_events, pert_length, spacing);
@@ -88,35 +94,21 @@ fprintf(['Number of events: %d | Width of each event: %.2f m | Spacing (Nz): ' .
 % The shift moves the peak *outside* the original bandwidth, making the 
 % sensing event visually distinct in the 'surf' and 'contour' maps.
 
-% --- INTERACTIVE MAGNITUDE SELECTION ---
-% This dialog allows choosing between realistic micro-strains or visually prominent peaks.
-choice = questdlg('Select Perturbation Magnitude Style:', ...
-	'Simulation Settings', ...
-	'Option A: Realistic (Micro-events)', 'Option B: Visual (Distinct Peaks)', 'Option A: Realistic (Micro-events)');
+% --- INTERACTIVE MAGNITUDE SELECTION (CONSOLE) ---
+fprintf('\nSelection of Perturbation Magnitude:         1) Realistic (Micro-events)        2) Visual (Distinct Peaks)\n');
+user_choice = input('> Option ');
 
-% Handle the response and apply the corresponding magnitude scaling
-switch choice
-    case 'Option A: Realistic (Micro-events)'
-        % delta_n ~ 1e-7 generates shifts of ~19 MHz.
-        % Note: These shifts stay within the correlation bandwidth (~100 MHz).
-        min_mag = 1e-7; 
-        max_mag = 5e-7;
-        fprintf('Configuration: Option A selected (Realistic Micro-events).\n');
-        
-    case 'Option B: Visual (Distinct Peaks)'
-        % delta_n ~ 5e-7 to 1e-6 generates shifts of ~95 to 190 MHz.
-        % These values force the peak to move outside the FWHM of the correlation mountain.
-        min_mag = 5e-7; 
-        max_mag = 1e-6;
-        fprintf('Configuration: Option B selected (Visually Prominent Peaks).\n');
-        
-    otherwise
-        % Default fallback if the window is closed without selection
-        min_mag = 1e-7; 
-        max_mag = 5e-7;
-        fprintf('No selection made. Defaulting to Option A.\n');
+if isempty(user_choice) || user_choice == 1
+    min_mag = 1e-7; 
+    max_mag = 5e-7;
+elseif user_choice == 2
+    min_mag = 5e-7; 
+    max_mag = 1e-6;
+else
+    min_mag = 1e-7; 
+    max_mag = 5e-7;
+    fprintf('Invalid input. Defaulting to Realistic Micro-events.\n');
 end
-
 %% 
 % Defining the sensing zone starting point (e.g., L-30 meters)
 sensing_zone = L - 30;
@@ -124,7 +116,7 @@ sensing_zone = L - 30;
 % Check if defined events fit within total fiber length L
 total = (num_events * pert_length) + ((num_events - 1) * spacing);
 if total > 30
-    error('Event configuration exceeds the allocated 30m sensing zone.')
+    error('Event configuration exceeds the allocated 30m sensing zone. Your current setup needs %.2f m.', total);
 end
 
 % Randomized placement of the event sequence along the fiber
@@ -205,6 +197,7 @@ for f_idx = 1:Nf
     beta_sig = 2 * pi * n_pert * current_nu / c;
     phi_sig = cumsum(beta_sig) * dz;
 
+    
     % --- Electric Field Construction via Convolution ---
     % WHY CONVOLUTION ('conv')? 
     % Physically, the detector captures the coherent phasor sum of all 
@@ -217,9 +210,13 @@ for f_idx = 1:Nf
     % Using 'conv' with a rectangular 'window' replaces a nested spatial loop, 
     % significantly optimizing the simulation while maintaining exact 
     % physical consistency with the 1D waveguide model.
+
+    E_ref_conv = conv(r .* exp(1j * 2 * phi_ref), window, 'valid');
+    E_sig_conv = conv(r .* exp(1j * 2 * phi_sig), window, 'valid');
+    attenuation = exp(-alpha * z(1:size(E_sig_conv, 2)));
     
-    E_ref(f_idx, :) = conv(r .* exp(1j * 2 * phi_ref), window, 'valid');
-    E_sig(f_idx, :) = conv(r .* exp(1j * 2 * phi_sig), window, 'valid');
+    E_ref(f_idx, :) = attenuation .* E_ref_conv;
+    E_sig(f_idx, :) = attenuation .* E_sig_conv;
 end
 
 %% ----- 6. SPECTRAL SHIFT ESTIMATION VIA CROSS-CORRELATION -----
