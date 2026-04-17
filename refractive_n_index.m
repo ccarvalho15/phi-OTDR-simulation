@@ -5,7 +5,7 @@ clear; clc; close all
 % - The fiber is treated as a series of inhomogeneities with random 
 % refractive indices
 %%%%%%%%%%%%%%%%%%%%%%%%%
-
+clc
 % PHYSICAL AND OPTICAL CONSTANTS
 c = 3e8;                    % Speed of light in vacuum (m/s)
 lambda0 = 1550e-9;          % Operating wavelength (m)
@@ -15,9 +15,14 @@ nu0 = c/lambda0;            % Central optical frequency (Hz)
 n_ave = 1.456;              % Average refractive index of the silica fiber
 L = 240;                    % Total fiber length used on the lab (m) 
 
-% Fiber attenuation :: Ideal Fiber = 0 m-1
-%                   :: Standard Fiber (Typical @ 1550nm) = 0.2 m-1
-alpha = 0.2;
+% --- OPTICAL ATTENUATION (LOSS) SETUP ---
+% Attenuation is typically provided in dB/km (logarithmic scale).
+% Standard single-mode fiber (SMF-28) at 1550nm has approx. 0.2 dB/km.
+attenuation = 0.2; % [dB/km]
+
+% To use attenuation in the exponential field equations, we must convert 
+% dB/km to the linear attenuation coefficient alpha (m^-1).
+alpha = attenuation/(10 * log10(exp(1)) * 1000);
 
 % SPATIAL SAMPLING AND RESOLUTION
 dz = 0.05;                  % Spatial sampling interval (m)
@@ -75,10 +80,10 @@ delta_n_pert = zeros(1, Nz);
 % CONFIGURATION OF SENSING EVENTS
 num_events = 5;         % Number of discrete perturbation zones
 pert_length = 2;        % Spatial width of each perturbation event (m)
-spacing = 3.5;          % Spatial separation between events (m)
+spacing = 4;          % Spatial separation between events (m)
 
 fprintf(['Number of events: %d | Width of each event: %.2f m | Spacing (Nz): ' ...
-    '%d m\n'], num_events, pert_length, spacing);
+    '%.2f m\n'], num_events, pert_length, spacing);
 
 %%
 % --- MAGNITUDE TRADE-OFF (delta_n vs. Correlation Bandwidth) ---
@@ -197,7 +202,6 @@ for f_idx = 1:Nf
     beta_sig = 2 * pi * n_pert * current_nu / c;
     phi_sig = cumsum(beta_sig) * dz;
 
-    
     % --- Electric Field Construction via Convolution ---
     % WHY CONVOLUTION ('conv')? 
     % Physically, the detector captures the coherent phasor sum of all 
@@ -213,10 +217,17 @@ for f_idx = 1:Nf
 
     E_ref_conv = conv(r .* exp(1j * 2 * phi_ref), window, 'valid');
     E_sig_conv = conv(r .* exp(1j * 2 * phi_sig), window, 'valid');
-    attenuation = exp(-alpha * z(1:size(E_sig_conv, 2)));
+
+    % --- Applying Fiber Loss (Beer-Lambert Law) ---
+    % As the light travels to distance 'z' and back to the detector (round-trip),
+    % the electric field amplitude decays exponentially.
+    % We use 'exp(-alpha * z)' because the signal accumulates loss over the 
+    % total path (2*z). Since alpha is defined for power, the field decay 
+    % over distance '2z' is exp(-(alpha/2) * 2z) = exp(-alpha * z).
+    loss_factor = exp(-alpha * z(1:size(E_ref_conv, 2)));
     
-    E_ref(f_idx, :) = attenuation .* E_ref_conv;
-    E_sig(f_idx, :) = attenuation .* E_sig_conv;
+    E_ref(f_idx, :) = loss_factor .* E_ref_conv;
+    E_sig(f_idx, :) = loss_factor .* E_sig_conv;
 end
 
 %% ----- 6. SPECTRAL SHIFT ESTIMATION VIA CROSS-CORRELATION -----
