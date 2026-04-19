@@ -18,7 +18,7 @@ L = 240;                    % Total fiber length used on the lab (m)
 % --- OPTICAL ATTENUATION (LOSS) SETUP ---
 % Attenuation is typically provided in dB/km (logarithmic scale).
 % Standard single-mode fiber (SMF-28) at 1550nm has approx. 0.2 dB/km.
-attenuation = 0.2; % [dB/km]
+attenuation = 20; % [dB/km]
 
 % To use attenuation in the exponential field equations, we must convert 
 % dB/km to the linear attenuation coefficient alpha (m^-1).
@@ -34,12 +34,14 @@ pulse_width = 10e-9;                % Temporal pulse width (10 ns)
 d = c * pulse_width / (2 * n_ave);  % Spatial resolution (~1 m)
 M = round(d / dz);                  % Number of scattering segments (inhomogeneities) within one pulse
 
-fprintf('\n--- Fiber Simulation Initialization ---\n');
-fprintf(['Fiber Length (L): %d m | ' ...
-    'Spatial Resolution (d): %.2f m | ' ...
-    'Total Spatial Points (Nz): %d | ' ...
-    'Number of Scattering Segments (M): %d | ' ...
-    'Attenuation (alpha): %.2f m-1\n'], L, d, Nz, M, alpha);
+fprintf('--- Fiber Simulation Initialization ---\n');
+fprintf([ ...
+    'Fiber Length (L):                      %d m\n' ...
+    'Spatial Resolution (d):                %.2f m\n' ...
+    'Total Spatial Points (Nz):             %d\n' ...
+    'Number of Scattering Segments (M):     %d\n' ...
+    'Attenuation (α):                       %.2f dB/km'], ...
+    L, d, Nz, M, attenuation);
 
 %% ----- 2. GENERATION OF STOCHASTIC RAYLEIGH SCATTERING CENTERS -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -82,8 +84,11 @@ num_events = 5;         % Number of discrete perturbation zones
 pert_length = 2;        % Spatial width of each perturbation event (m)
 spacing = 4;          % Spatial separation between events (m)
 
-fprintf(['Number of events: %d | Width of each event: %.2f m | Spacing (Nz): ' ...
-    '%.2f m\n'], num_events, pert_length, spacing);
+fprintf([ ...
+    '\nNumber of events:                      %d\n' ...
+    'Width of each event:                   %.2f m\n' ...
+    'Spacing (Nz):                          %.2f m\n'], ...
+    num_events, pert_length, spacing);
 
 %%
 % --- MAGNITUDE TRADE-OFF (delta_n vs. Correlation Bandwidth) ---
@@ -185,7 +190,6 @@ window = ones(1, M);
 % - For each frequency step, the total electric field is calculated by 
 % integrating the contributions of all scattering centers within the pulse volume.
 %%%%%%%%%%%%%%%%%%%%%%%%%
-
 for f_idx = 1:Nf
     current_nu = f(f_idx);
     
@@ -218,6 +222,9 @@ for f_idx = 1:Nf
     E_ref_conv = conv(r .* exp(1j * 2 * phi_ref), window, 'valid');
     E_sig_conv = conv(r .* exp(1j * 2 * phi_sig), window, 'valid');
 
+    E_ref_ideal = E_ref_conv;
+    E_sig_ideal = E_sig_conv;
+
     % --- Applying Fiber Loss (Beer-Lambert Law) ---
     % As the light travels to distance 'z' and back to the detector (round-trip),
     % the electric field amplitude decays exponentially.
@@ -225,9 +232,15 @@ for f_idx = 1:Nf
     % total path (2*z). Since alpha is defined for power, the field decay 
     % over distance '2z' is exp(-(alpha/2) * 2z) = exp(-alpha * z).
     loss_factor = exp(-alpha * z(1:size(E_ref_conv, 2)));
-    
+
+    % Capture the "ideal" field, with no loss
+    E_ref_id(f_idx, :) = E_ref_ideal;
+    E_sig_id(f_idx, :) = E_sig_ideal;
+
+    % Capture the "real" field, with loss
     E_ref(f_idx, :) = loss_factor .* E_ref_conv;
     E_sig(f_idx, :) = loss_factor .* E_sig_conv;
+
 end
 
 %% ----- 6. SPECTRAL SHIFT ESTIMATION VIA CROSS-CORRELATION -----
@@ -299,6 +312,7 @@ zlim([-0.5 1]); % Correlation magnitude scale
 % A "top-down" view that combines the correlation energy with the 
 % mathematical peak detection (white line).
 % This visualization is excellent for assessing the Signal-to-Noise Ratio (SNR).
+
 figure(3)
 [Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
 contourf(Z_mesh, F_mesh, corr_map, 20, 'LineColor', 'none'); 
@@ -312,6 +326,7 @@ title('2D Correlation Map (Top View with Peak Trace)');
 % Focus the view on the perturbed regions for better detail
 xlim([max(0, first_event - 50) min(L, last_event + 50)]); 
 ylim([-250 250]);
+
 %%
 % --- FIGURE 4: Summary Overview ---
 % Combined plot for comparative analysis of spatial and spectral data.
@@ -332,5 +347,30 @@ rotate3d on;
 xlim([0 L]); % Full fiber length
 ylim([-250 250]); % Frequency shift window
 zlim([-0.5 1]); % Correlation magnitude scale
+
+%% ----- 8. ATTENUATION IMPACT ANALYSIS -----
+% Comparing the backscattered intensity with and without fiber loss
+figure (5);
+% Select the first frequency from the sweep for visualization
+P_ref_loss = abs(E_ref(1, :)).^2;
+P_ref_ideal = abs(E_ref_id(1, :)).^2;
+
+z_axis = z(1:length(P_ref_loss));
+
+% Subplot 1: Linear Scale
+subplot(2,1,1);
+plot(z_axis, P_ref_ideal, 'b', 'DisplayName', 'No Attenuation (\alpha = 0)');
+hold on;
+plot(z_axis, P_ref_loss, 'r', 'DisplayName', ['With Attenuation (\alpha = ', num2str(attenuation), ' dB/km)']);
+hold off;
+title('Backscattered Intensity (Linear Scale)'); ylabel('Power (a.u.)'); legend('Location', 'northeast'); grid on;
+
+% Subplot 2: Logarithmic Scale (OTDR Trace)
+subplot(2,1,2);
+plot(z_axis, 10*log10(P_ref_ideal + eps), 'b');
+hold on;
+plot(z_axis, 10*log10(P_ref_loss + eps), 'r');
+hold off;
+title('Backscattered Intensity (Logarithmic Scale - OTDR Trace)'); ylabel('Power (dB)'); xlabel('Distance (m)'); grid on;
 
 fprintf('\n--- Simulation successfully completed! ---\n');
