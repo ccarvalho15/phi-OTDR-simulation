@@ -18,7 +18,7 @@ L = 240;                    % Total fiber length used on the lab (m)
 % --- OPTICAL ATTENUATION (LOSS) SETUP ---
 % Attenuation is typically provided in dB/km (logarithmic scale).
 % Standard single-mode fiber (SMF-28) at 1550nm has approx. 0.2 dB/km.
-attenuation = 20; % [dB/km]
+attenuation = 0.2; % [dB/km]
 
 % To use attenuation in the exponential field equations, we must convert 
 % dB/km to the linear attenuation coefficient alpha (m^-1).
@@ -33,6 +33,8 @@ Nz = length(z);             % Total number os spatial sampling points
 pulse_width = 10e-9;                % Temporal pulse width (10 ns)
 d = c * pulse_width / (2 * n_ave);  % Spatial resolution (~1 m)
 M = round(d / dz);                  % Number of scattering segments (inhomogeneities) within one pulse
+roll_off = 0.1;                     % Roll-off factor for pulse shaping (Raised Cosine)
+t_rect = linspace(-pulse_width/2, pulse_width/2, M); % Time vector for pulse window
 
 fprintf('--- Fiber Simulation Initialization ---\n');
 fprintf([ ...
@@ -40,8 +42,9 @@ fprintf([ ...
     'Spatial Resolution (d):                %.2f m\n' ...
     'Total Spatial Points (Nz):             %d\n' ...
     'Number of Scattering Segments (M):     %d\n' ...
-    'Attenuation (α):                       %.2f dB/km'], ...
-    L, d, Nz, M, attenuation);
+    'Attenuation (α):                       %.2f dB/km\n' ...
+    'Roll-off factor (β):                   %.2f'], ...
+    L, d, Nz, M, attenuation, roll_off);
 
 %% ----- 2. GENERATION OF STOCHASTIC RAYLEIGH SCATTERING CENTERS -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -179,10 +182,25 @@ Nf = length(f);
 E_ref = zeros(Nf, Nz-M+1);
 E_sig = zeros(Nf, Nz-M+1);
 
-% % The optical pulse is modeled as a rectangular window function of length M.
-% This window determines the range of scattering centers that contribute 
-% to the total interference at a given time delay.
-window = ones(1, M); 
+%% ----- 4.1 REALISTIC PULSE SHAPPING -----
+% Instead of a perfecdt retangular pulse, using 
+% window  = ones(1, M)
+% where the optical pulse is modeled as a rectangular window function of 
+% length M, we use a Raised Cosine window to model the Electro-Optic 
+% Modulator (EOM) rise and fall times
+
+% Generate the Raised Cosine envelope. This reduce high-frequency artifacts
+% in the simulation
+window = cos(pi * roll_off * t_rect / pulse_width) ./ (1 - (2 * roll_off ...
+    * t_rect / pulse_width).^2);
+
+% Handle potential division by zero at the poins
+% t = +/- pulse_width / (2 * roll_off)
+window(isnan(window)) = pi/4; 
+window(isinf(window)) = pi/4;
+
+% Normalize the amplitude to 1 to maintain consistency in backscatter intensity
+window = window / max(window);
 
 %% ----- 5. COHERENT BACKSCATTER INTEGRATION (PHASOR SUM) -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
