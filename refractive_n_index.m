@@ -36,6 +36,12 @@ M = round(d / dz);                  % Number of scattering segments (inhomogenei
 roll_off = 0.1;                     % Roll-off factor for pulse shaping (Raised Cosine)
 t_rect = linspace(-pulse_width/2, pulse_width/2, M); % Time vector for pulse window
 
+% PHASE NOISE CONFIGURATION
+% xi0 represents the laser linewidth (FWHN) and dt is the time step
+% corresponding to the spatial resolution dz
+xi0 = 10e6; % 10 MHz linewidth
+dt = dz / (c / n_ave); % Time of flight for dz step
+
 fprintf('--- Fiber Simulation Initialization ---\n');
 fprintf([ ...
     'Fiber Length (L):                      %d m\n' ...
@@ -43,8 +49,10 @@ fprintf([ ...
     'Total Spatial Points (Nz):             %d\n' ...
     'Number of Scattering Segments (M):     %d\n' ...
     'Attenuation (α):                       %.2f dB/km\n' ...
-    'Roll-off factor (β):                   %.2f'], ...
-    L, d, Nz, M, attenuation, roll_off);
+    'Roll-off factor (β):                   %.2f\n' ...
+    'Laser Linewidth (ξ0):                  %.1f MHz\n' ... 
+    'Time Step (dt):                        %.3e s'], ...  
+    L, d, Nz, M, attenuation, roll_off, xi0/1e6, dt);
 
 %% ----- 2. GENERATION OF STOCHASTIC RAYLEIGH SCATTERING CENTERS -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -211,54 +219,53 @@ window = window / max(window);
 for f_idx = 1:Nf
     current_nu = f(f_idx);
     
-    % --- Propagation Phase Calculation ---
-    % beta represents the propagation constant. 
-    % The phase phi is the spatial integral of beta along the fiber (cumsum).
+    % ----- PHASE NOISE MODELING (Laser Linewidth) -----
+    % We model frequency noise as White Gaussian Noise (WGN).
+    % The variance is scaled by (xi0 / (2*pi*dt)) to relate linewidth to 
+    % phase jitter.
+    nu_inst = sqrt(xi0 / (2 * pi * dt)) * randn(1, Nz);
     
-    % Reference state: Cumulative phase with baseline refractive index n
-    beta_ref = 2 * pi * n * current_nu /c;
-    phi_ref = cumsum(beta_ref) * dz; 
-
-    % Perturbed state: Cumulative phase with modified index n_pert
-    %  This captures the phase shift induced by the sensing event (strain/temp).
+    % The phase drift phi_noise is the temporal integral of frequency noise.
+    % This represents a Wiener Process (Random Walk), simulating the finite 
+    % coherence length of the semiconductor laser source.
+    phi_noise = cumsum(nu_inst) * dt;
+    
+    % --- PROPAGATION PHASE CALCULATION ---
+    % beta (propagation constant) is calculated for each spatial segment.
+    % The total phase phi is the spatial integral of beta along the fiber.
+    
+    % Reference State: Baseline phase including stochastic noise and fiber index n
+    beta_ref = 2 * pi * n * current_nu / c;
+    phi_ref = cumsum(beta_ref) * dz + phi_noise; 
+    
+    % Perturbed State: Phase including sensing-induced shifts (strain/temp)
+    % delta_n_pert modifies the local beta, resulting in a differential phase shift.
     beta_sig = 2 * pi * n_pert * current_nu / c;
-    phi_sig = cumsum(beta_sig) * dz;
-
-    % --- Electric Field Construction via Convolution ---
-    % WHY CONVOLUTION ('conv')? 
-    % Physically, the detector captures the coherent phasor sum of all 
-    % M reflectors within the pulse width at any given time delay. 
-    % Mathematically, this is equivalent to a sliding window integration.
+    phi_sig = cumsum(beta_sig) * dz + phi_noise;
     
-    % The term 'r .* exp(1j * 2 * phi)' represents the local backscattered 
-    % light from each segment, where '2*phi' accounts for the round-trip path.
+    % --- COHERENT FIELD CONSTRUCTION (PHASOR SUMMATION) ---
+    % The detector output at any time delay is the coherent sum (interference) 
+    % of all M scattering centers within the pulse volume (spatial window).
     
-    % Using 'conv' with a rectangular 'window' replaces a nested spatial loop, 
-    % significantly optimizing the simulation while maintaining exact 
-    % physical consistency with the 1D waveguide model.
-
+    % We use 'conv' (convolution) to implement a sliding window integration.
+    % The term 'r .* exp(1j * 2 * phi)' is the local backscattered phasor.
+    % Factor '2' accounts for the round-trip propagation (ToF) to the reflector.
     E_ref_conv = conv(r .* exp(1j * 2 * phi_ref), window, 'valid');
     E_sig_conv = conv(r .* exp(1j * 2 * phi_sig), window, 'valid');
-
-    E_ref_ideal = E_ref_conv;
-    E_sig_ideal = E_sig_conv;
-
-    % --- Applying Fiber Loss (Beer-Lambert Law) ---
-    % As the light travels to distance 'z' and back to the detector (round-trip),
-    % the electric field amplitude decays exponentially.
-    % We use 'exp(-alpha * z)' because the signal accumulates loss over the 
-    % total path (2*z). Since alpha is defined for power, the field decay 
-    % over distance '2z' is exp(-(alpha/2) * 2z) = exp(-alpha * z).
+    
+    % --- OPTICAL ATTENUATION (Beer-Lambert Law) ---
+    % As the probe pulse travels, it suffers exponential power decay.
+    % For electric field amplitude, the decay factor over distance 'z' 
+    % (round-trip 2z) is exp(-(alpha/2) * 2z) = exp(-alpha * z).
     loss_factor = exp(-alpha * z(1:size(E_ref_conv, 2)));
-
-    % Capture the "ideal" field, with no loss
-    E_ref_id(f_idx, :) = E_ref_ideal;
-    E_sig_id(f_idx, :) = E_sig_ideal;
-
-    % Capture the "real" field, with loss
+    
+    % Store Ideal (Lossless) Fields for SNR comparison
+    E_ref_id(f_idx, :) = E_ref_conv;
+    E_sig_id(f_idx, :) = E_sig_conv;
+    
+    % Store Real (Attenuated) Fields
     E_ref(f_idx, :) = loss_factor .* E_ref_conv;
     E_sig(f_idx, :) = loss_factor .* E_sig_conv;
-
 end
 
 %% ----- 6. SPECTRAL SHIFT ESTIMATION VIA CROSS-CORRELATION -----
