@@ -1,46 +1,60 @@
 clear; clc; close all
 
 %% ----- 1. SYSTEM CONFIGURATION & WAVEGUIDE PROPERTIES -----
-%%%%%%%%%%%%%%%%%%%%%%%%%
-% - The fiber is treated as a series of inhomogeneities with random 
-% refractive indices
-%%%%%%%%%%%%%%%%%%%%%%%%%
 clc
-% PHYSICAL AND OPTICAL CONSTANTS
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%   The fiber is treated as a series of inhomogeneities with random refractive 
+% indices
+%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% --- 1.1 PHYSICAL AND OPTICAL CONSTANTS ---
 c = 3e8;                    % Speed of light in vacuum (m/s)
 lambda0 = 1550e-9;          % Operating wavelength (m)
 nu0 = c/lambda0;            % Central optical frequency (Hz)
-
-% FIBER PROPERTIES (modeled as a 1D waveguide)
 n_ave = 1.456;              % Average refractive index of the silica fiber
+
+
+% --- 1.2 FIBER PROPERTIES AND OPTICAL ATTENUATION (LOSS) SETUP ---
 L = 240;                    % Total fiber length used on the lab (m) 
 
-% --- OPTICAL ATTENUATION (LOSS) SETUP ---
-% Attenuation is typically provided in dB/km (logarithmic scale).
-% Standard single-mode fiber (SMF-28) at 1550nm has approx. 0.2 dB/km.
-attenuation = 0.2; % [dB/km]
+%   Attenuation is typically provided in dB/km (logarithmic scale). Standard 
+% single-mode fiber (SMF-28) at 1550nm has approx. 0.19–0.2 dB/km range.
+attenuation = 0.2;
 
-% To use attenuation in the exponential field equations, we must convert 
+%   To use attenuation in the exponential field equations, we must convert 
 % dB/km to the linear attenuation coefficient alpha (m^-1).
 alpha = attenuation/(10 * log10(exp(1)) * 1000);
 
-% SPATIAL SAMPLING AND RESOLUTION
+
+% --- 1.3 SPATIAL SAMPLING AND RESOLUTION
 dz = 0.05;                  % Spatial sampling interval (m)
 z = 0:dz:L-dz;              % Distance vector along the fiber 1D model
 Nz = length(z);             % Total number os spatial sampling points
 
-% PULSE CHARACTERISTICS AND PHASE INTEGRATION
+
+% 1.4 --- PULSE AND MODULATION CHARACTERISTICS ---
 pulse_width = 10e-9;                % Temporal pulse width (10 ns)
 d = c * pulse_width / (2 * n_ave);  % Spatial resolution (~1 m)
-M = round(d / dz);                  % Number of scattering segments (inhomogeneities) within one pulse
-roll_off = 0.1;                     % Roll-off factor for pulse shaping (Raised Cosine)
+M = round(d / dz);                  % Number of scattering segments 
+                                    % (inhomogeneities) within one pulse
+
+%   Coherent optical systems can work with roll-off factors ranging from 0.01 
+% to 0.1, implementing a pulse with near-rectangular spectrum.
+roll_off = 0.1;                                      % Roll-off factor for pulse
+                                                     % shaping (Raised Cosine)
 t_rect = linspace(-pulse_width/2, pulse_width/2, M); % Time vector for pulse window
 
-% PHASE NOISE CONFIGURATION
-% xi0 represents the laser linewidth (FWHN) and dt is the time step
-% corresponding to the spatial resolution dz
-xi0 = 10e6; % 10 MHz linewidth
-dt = dz / (c / n_ave); % Time of flight for dz step
+
+% --- 1.5 NOISE PARAMETERS ---
+%   Laser linewidth: a narrower linewidth (e.g., 1 kHz) would increase 
+% coherence; a wider one (> 1 MHz) would significantly increase phase noise 
+% and degrade the correlation peak.
+linewidth = 100e3; % 100 kHz
+%   OSNR_dB: 20 dB is a common operating point for lab-bench systems, providing a 
+% balance between sufficient signal strength and realistic noise levels to 
+% test signal processing algorithms.
+OSNR_dB = 20; % in dB
+
 
 fprintf('--- Fiber Simulation Initialization ---\n');
 fprintf([ ...
@@ -50,25 +64,25 @@ fprintf([ ...
     'Number of Scattering Segments (M):     %d\n' ...
     'Attenuation (α):                       %.2f dB/km\n' ...
     'Roll-off factor (β):                   %.2f\n' ...
-    'Laser Linewidth (ξ0):                  %.1f MHz\n' ... 
-    'Time Step (dt):                        %.3e s'], ...  
-    L, d, Nz, M, attenuation, roll_off, xi0/1e6, dt);
+    'Laser Linewidth (Δν):                  %.1f kHz\n' ...
+    'System Signal-to-Noise Ratio:          %d dB'], ...
+    L, d, Nz, M, attenuation, roll_off, linewidth/1e3, OSNR_dB);
 
 %% ----- 2. GENERATION OF STOCHASTIC RAYLEIGH SCATTERING CENTERS -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
-% - Modeling the fiber as a 1D waveguide with random inhomogeneities.
-% - According to the paper, Rayleigh scattering is simulated by small 
-% fluctuations in the refractive index along the fiber core.
+%   Modeling the fiber as a 1D waveguide with random inhomogeneities. According 
+% to the paper, Rayleigh scattering is simulated by small fluctuations in 
+% the refractive index along the fiber core.
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
-sigma_n = 2e-6;                % Standard deviation of index fluctuations 
-delta_n = sigma_n * randn(1, Nz); % Gaussian distributed random index variations
-n = n_ave + delta_n;           % Resulting refractive index profile, n(z)
+sigma_n = 2e-6;                     % Standard deviation of index fluctuations 
+delta_n = sigma_n * randn(1, Nz);   % Gaussian distributed random index variations
+n = n_ave + delta_n;                % Resulting refractive index profile, n(z)
 
 % FRESNEL REFLECTION COEFFICIENT
 %%%%%%%%%%%%%%%%%%%%%%%%%
-% - Calculation of the local reflection coefficient (r) at each interface.
-% - The model treats each 'dz' step as a discrete boundary between media 
+%   Calculation of the local reflection coefficient (r) at each interface.
+%   The model treats each 'dz' step as a discrete boundary between media 
 % with slightly different refractive indices.
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -81,11 +95,11 @@ end
 
 %% ----- 3. MODELING OF ENVIRONMENTAL SENSING EVENTS (STRAIN/TEMP) -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
-% - Following the approach of Lu & Thomas, environmental perturbations 
+%   Following the approach of Lu & Thomas, environmental perturbations 
 % (e.g., strain or temperature) are modeled as localized modulations of the 
 % refractive index profile.
-% - Based on Lu & Thomas, temperature changes modulate the phase via dn/dT
-% - For Silica: dn/dT approx. 1.1e-5 
+%   Based on Lu & Thomas, temperature changes modulate the phase via dn/dT.
+% For Silica: dn/dT approx. 1.1e-5 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 
 delta_n_pert = zeros(1, Nz);
@@ -93,7 +107,7 @@ delta_n_pert = zeros(1, Nz);
 % CONFIGURATION OF SENSING EVENTS
 num_events = 5;         % Number of discrete perturbation zones
 pert_length = 2;        % Spatial width of each perturbation event (m)
-spacing = 4;          % Spatial separation between events (m)
+spacing = 4;            % Spatial separation between events (m)
 
 fprintf([ ...
     '\nNumber of events:                      %d\n' ...
@@ -103,8 +117,9 @@ fprintf([ ...
 
 %%
 % --- MAGNITUDE TRADE-OFF (delta_n vs. Correlation Bandwidth) ---
-% The speckle pattern generates a correlation peak with a finite bandwidth (FWHM).
-% For a pulse width of 10 ns (d ~ 1.03 m), the bandwidth is approximately:
+%   The speckle pattern generates a correlation peak with a finite bandwidth
+% (FWHM).
+%   For a pulse width of 10 ns (d ~ 1.03 m), the bandwidth is approximately:
 % FWHM = c / (2 * n_ave * d) ~= 100 MHz.
 %
 % Option A (Realistic): delta_n = 1e-7 -> Shift ~= 19 MHz.
@@ -137,7 +152,8 @@ sensing_zone = L - 30;
 % Check if defined events fit within total fiber length L
 total = (num_events * pert_length) + ((num_events - 1) * spacing);
 if total > 30
-    error('Event configuration exceeds the allocated 30m sensing zone. Your current setup needs %.2f m.', total);
+    error(['Event configuration exceeds the allocated 30m sensing zone. Your ' ...
+        'current setup needs %.2f m.'], total);
 end
 
 % Randomized placement of the event sequence along the fiber
@@ -171,7 +187,7 @@ n_pert = n + delta_n_pert;
 
 %% ----- 4. PROBE SIGNAL & FREQUENCY SWEEP PARAMETERS -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
-% - In this stage, we simulate a frequency-swept probe signal to recover 
+%   In this stage, we simulate a frequency-swept probe signal to recover 
 % the Rayleigh Backscatter (RB) spectra, as detailed in the static 
 % measurement section of the paper.
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -186,91 +202,135 @@ Nf = length(f);
 % Pre-allocation of matrices for the backscattered electric fields
 % - Rows represent frequency components; 
 % - Columns represent spatial positions (traces)
-% The length is Nz-M+1 because the pulse integration window 'M' reduces the valid range.
+% The length is Nz-M+1 because the pulse integration window 'M' reduces the 
+% valid range.
 E_ref = zeros(Nf, Nz-M+1);
 E_sig = zeros(Nf, Nz-M+1);
 
+% To capture the ideal electric field
+E_ref_id = zeros(Nf, Nz-M+1); 
+E_sig_id = zeros(Nf, Nz-M+1); 
+
 %% ----- 4.1 REALISTIC PULSE SHAPPING -----
-% Instead of a perfecdt retangular pulse, using 
-% window  = ones(1, M)
-% where the optical pulse is modeled as a rectangular window function of 
-% length M, we use a Raised Cosine window to model the Electro-Optic 
-% Modulator (EOM) rise and fall times
+%   Instead of a perfecdt retangular pulse, using window  = ones(1, M) where 
+% the optical pulse is modeled as a rectangular window function of length M,
+% we use a Raised Cosine window to model the Electro-Optic Modulator (EOM) 
+% rise and fall times
+%
+% The time-domain Raised Cosine pulse models the EOM output envelope. It is 
+% the inverse Fourier transform of the raised cosine frequency response:
+% h(t) = sinc(t/T) * cos(pi * roll_off * t / pulse_width) / 
+%                                          (1 - (2*roll_off*t/pulse_width)^2)
+% 
 
-% Generate the Raised Cosine envelope. This reduce high-frequency artifacts
-% in the simulation
-window = cos(pi * roll_off * t_rect / pulse_width) ./ (1 - (2 * roll_off ...
-    * t_rect / pulse_width).^2);
+t_norm = t_rect / pulse_width; % Normalized time
+sinc_term = sinc(t_norm); % sinc time
+cos_term = cos(pi * roll_off * t_norm); % cosine modulation term
+denom = 1 - (2 * roll_off * t_norm).^2; % denominator: goes to zero at t = +-T/(2*roll_off)
 
-% Handle potential division by zero at the poins
-% t = +/- pulse_width / (2 * roll_off)
-window(isnan(window)) = pi/4; 
-window(isinf(window)) = pi/4;
+% Compute the raised cosine pulse h(t)
+window = sinc_term .* cos_term ./ denom;
+
+% Using L' Hospital's rule to handle the two singularities
+% lim_{t -> t+- T/(2*beta} h(t) = (pi/4) * sinc(1/2*beta))
+singularity_mask = abs(denom) < 1e-6;
+window(singularity_mask) = (pi/4) * sinc(1 / (2 * roll_off));
 
 % Normalize the amplitude to 1 to maintain consistency in backscatter intensity
-window = window / max(window);
+window = window / max(abs(window));
 
-%% ----- 5. COHERENT BACKSCATTER INTEGRATION (PHASOR SUM) -----
+%% ----- 5. COHERENT BACKSCATTER INTEGRATION & NOISE MODELING -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
-% - This loop simulates the frequency-dependent backscattered field. 
-% - For each frequency step, the total electric field is calculated by 
-% integrating the contributions of all scattering centers within the pulse volume.
+%   This loop simulates the frequency-dependent backscattered field. For 
+% each frequency step, the total electric field is calculated by integrating 
+% the contributions of all scattering centers within the pulse volume.
+%
+% NOISE MODEL:
+% - Laser Phase Noise: Modeled as a Wiener Process (aka Random Walk), the
+% phase uncertainty accumulates with time (and thus distance(.
+% - Receiver Noise: Combines thermal and shot noise, and it's added as
+% complex additive white Guassian noise to the field
 %%%%%%%%%%%%%%%%%%%%%%%%%
+
 for f_idx = 1:Nf
     current_nu = f(f_idx);
     
-    % ----- PHASE NOISE MODELING (Laser Linewidth) -----
-    % We model frequency noise as White Gaussian Noise (WGN).
-    % The variance is scaled by (xi0 / (2*pi*dt)) to relate linewidth to 
-    % phase jitter.
-    nu_inst = sqrt(xi0 / (2 * pi * dt)) * randn(1, Nz);
+
+    % --- 5.1 Propagation Phase Calculation ---
+    % beta: propagation constant
+    % phi: spatial integral of beta along the fiber (cumsum).
     
-    % The phase drift phi_noise is the temporal integral of frequency noise.
-    % This represents a Wiener Process (Random Walk), simulating the finite 
-    % coherence length of the semiconductor laser source.
-    phi_noise = cumsum(nu_inst) * dt;
-    
-    % --- PROPAGATION PHASE CALCULATION ---
-    % beta (propagation constant) is calculated for each spatial segment.
-    % The total phase phi is the spatial integral of beta along the fiber.
-    
-    % Reference State: Baseline phase including stochastic noise and fiber index n
-    beta_ref = 2 * pi * n * current_nu / c;
-    phi_ref = cumsum(beta_ref) * dz + phi_noise; 
-    
-    % Perturbed State: Phase including sensing-induced shifts (strain/temp)
-    % delta_n_pert modifies the local beta, resulting in a differential phase shift.
+    % Reference state: Cumulative phase with baseline refractive index n
+    beta_ref = 2 * pi * n * current_nu /c;
+    phi_ref = cumsum(beta_ref) * dz; 
+
+    % Perturbed state: Cumulative phase with modified index n_pert
+    % This captures the phase shift induced by the sensing event (strain/temp).
     beta_sig = 2 * pi * n_pert * current_nu / c;
-    phi_sig = cumsum(beta_sig) * dz + phi_noise;
+    phi_sig = cumsum(beta_sig) * dz;
+
+
+    % --- 5.2 Electric Field Construction via Convolution ---
+    % WHY CONVOLUTION ('conv')? 
+    % Physically, the detector captures the coherent phasor sum of all 
+    % M reflectors within the pulse width at any given time delay. 
+    % Mathematically, this is equivalent to a sliding window integration.
     
-    % --- COHERENT FIELD CONSTRUCTION (PHASOR SUMMATION) ---
-    % The detector output at any time delay is the coherent sum (interference) 
-    % of all M scattering centers within the pulse volume (spatial window).
+    % The term 'r .* exp(1j * 2 * phi)' represents the local backscattered 
+    % light from each segment, where '2*phi' accounts for the round-trip path.
     
-    % We use 'conv' (convolution) to implement a sliding window integration.
-    % The term 'r .* exp(1j * 2 * phi)' is the local backscattered phasor.
-    % Factor '2' accounts for the round-trip propagation (ToF) to the reflector.
+    % Using 'conv' with a rectangular 'window' replaces a nested spatial loop, 
+    % significantly optimizing the simulation while maintaining exact 
+    % physical consistency with the 1D waveguide model.
+
     E_ref_conv = conv(r .* exp(1j * 2 * phi_ref), window, 'valid');
     E_sig_conv = conv(r .* exp(1j * 2 * phi_sig), window, 'valid');
+
+    % Adjust distance vector for 'valid' conv
+    z_valid = z(1:length(E_ref_conv)); 
+
+
+    % --- 5.3 Laser Phase Noise (Transmitter Impairment) ---
+    % Phase noise variance increases linearly with the round-trip delay (tau) 
+    tau = 2 * n_ave * z_valid / c; % Time delay
+    std_dvt_phase = sqrt(2 * pi * linewidth * tau); % sqrt(2 * pi * linewidth * tau)
     
-    % --- OPTICAL ATTENUATION (Beer-Lambert Law) ---
-    % As the probe pulse travels, it suffers exponential power decay.
-    % For electric field amplitude, the decay factor over distance 'z' 
-    % (round-trip 2z) is exp(-(alpha/2) * 2z) = exp(-alpha * z).
-    loss_factor = exp(-alpha * z(1:size(E_ref_conv, 2)));
+    % Generate independent phase noise for this specific frequency step
+    laser_phase_noise = std_dvt_phase .* randn(size(E_ref_conv));
+        
+    % Apply the stochastic phase jitter to the complex fields
+    E_ref_conv = E_ref_conv .* exp(1j * laser_phase_noise);
+    E_sig_conv = E_sig_conv .* exp(1j * laser_phase_noise);
+
     
-    % Store Ideal (Lossless) Fields for SNR comparison
+    % --- 5.4 Fiber Loss (Beer-Lambert Law) ---
+    % As the light travels to distance 'z' and back to the detector (round-trip),
+    % the electric field amplitude decays exponentially.
+    % We use 'exp(-alpha * z)' because the signal accumulates loss over the 
+    % total path (2*z). Since alpha is defined for power, the field decay 
+    % over distance '2z' is exp(-(alpha/2) * 2z) = exp(-alpha * z).
+    loss_factor = exp(-alpha * z_valid);
+
+    E_ref_raw = loss_factor .* E_ref_conv;
+    E_sig_raw = loss_factor .* E_sig_conv;
+
+
+    % --- 5.5 Additive White Gaussian Noise (Receiver Impairment) ---
+    % Simulates the electronic noise floor (Thermal) and photon counting 
+    % noise (Shot). The 'measured' flag ensures the noise power is scaled 
+    % relative to the signal power.
+    E_ref(f_idx, :) = awgn(E_ref_raw, OSNR_dB, 'measured');
+    E_sig(f_idx, :) = awgn(E_sig_raw, OSNR_dB, 'measured');
+
+    % Store ideal fields for performance benchmarking
     E_ref_id(f_idx, :) = E_ref_conv;
     E_sig_id(f_idx, :) = E_sig_conv;
-    
-    % Store Real (Attenuated) Fields
-    E_ref(f_idx, :) = loss_factor .* E_ref_conv;
-    E_sig(f_idx, :) = loss_factor .* E_sig_conv;
+
 end
 
 %% ----- 6. SPECTRAL SHIFT ESTIMATION VIA CROSS-CORRELATION -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
-% - Following the methodology described in the paper, we perform a local 
+%   Following the methodology described in the paper, we perform a local 
 % cross-correlation between the reference and perturbed Rayleigh backscatter 
 % intensity spectra to quantify the environmental impact.
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -278,7 +338,7 @@ end
 % Define the frequency lag axis for correlation mapping
 lags_freq = (-(Nf-1):(Nf-1)) * delta_f; 
 corr_map = zeros(length(lags_freq), Nz-M+1); % Pre-allocate matrix for 3D correlation visualization
-freq_shift = zeros(1, Nz-M+1); % Vector to store the estimated frequency shift per position
+freq_shift = zeros(1, Nz-M+1);               % Vector to store the estimated frequency shift per position
 
 for k = 1:Nz-M+1
     % - Convert electric fields to intensity spectra (Power Spectral Density 
@@ -288,14 +348,14 @@ for k = 1:Nz-M+1
     sig = abs(E_sig(:,k)).^2;
     
     % % --- Cross-Correlation Process ---
-    % - We use zero-mean intensity spectra to eliminate DC bias and enhance 
+    %   We use zero-mean intensity spectra to eliminate DC bias and enhance 
     % the correlation peak detection.
-    % - 'coeff' normalizes the sequences so that the auto-correlation at zero lag is 1.0.
+    %   'coeff' normalizes the sequences so that the auto-correlation at zero lag is 1.0.
     [cv, lags] = xcorr(sig - mean(sig), ref - mean(ref), 'coeff');
     corr_map(:, k) = cv;
     
     % --- Peak Tracking ---
-    % The frequency shift (Delta_nu) corresponds to the lag that maximizes 
+    %   The frequency shift (Delta_nu) corresponds to the lag that maximizes 
     % the correlation coefficient.
     [~, max_idx] = max(cv);
     freq_shift(k) = lags(max_idx) * delta_f; 
@@ -303,7 +363,7 @@ end
 
 %% ----- 7. DATA VISUALIZATION & SENSOR PERFORMANCE ANALYSIS -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
-% This section visualizes the mapping between the physical perturbation and 
+%   This section visualizes the mapping between the physical perturbation and 
 % the recovered frequency shifts, simulating the output of a distributed 
 % fiber sensing interrogation system.
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -397,5 +457,51 @@ hold on;
 plot(z_axis, 10*log10(P_ref_loss + eps), 'r');
 hold off;
 title('Backscattered Intensity (Logarithmic Scale - OTDR Trace)'); ylabel('Power (dB)'); xlabel('Distance (m)'); grid on;
+
+%% ----- 9. NOISE IMPACT VISUALIZATION -----
+% We will compare the Ideal signal (E_ref_id) vs the Noisy signal (E_ref)
+
+figure(6);
+% Select a specific position (e.g., at 100 meters) to see the Spectral Distortion
+pos_idx = round(100/dz); 
+spectra_ideal = abs(E_ref_id(:, pos_idx)).^2;
+spectra_noisy = abs(E_ref(:, pos_idx)).^2;
+
+subplot(2,1,1);
+plot(f/1e6, spectra_ideal, 'b--', 'LineWidth', 1, 'DisplayName', 'Ideal Spectrum');
+hold on;
+plot(f/1e6, spectra_noisy, 'r', 'DisplayName', 'Noisy (Phase + AWGN)');
+hold off;
+title(['Effect of Noise on Rayleigh Spectrum at ', num2str(z(pos_idx)), ' m']);
+xlabel('Frequency (MHz)'); ylabel('Intensity (a.u.)');
+legend; grid on;
+
+% Subplot 2: Show the effect on the Correlation Peak
+% We take the cross-correlation of the signal with itself at that position
+[cv_id, lags_id] = xcorr(spectra_ideal - mean(spectra_ideal), 'coeff');
+[cv_noise, lags_noise] = xcorr(spectra_noisy - mean(spectra_noisy), 'coeff');
+
+subplot(2,1,2);
+plot(lags_id * delta_f / 1e6, cv_id, 'b--', 'DisplayName', 'Ideal Peak');
+hold on;
+plot(lags_noise * delta_f / 1e6, cv_noise, 'r', 'DisplayName', 'Noisy Peak');
+hold off;
+title('Correlation Peak Degradation');
+xlabel('Frequency Lag (MHz)'); ylabel('Correlation Coefficient');
+legend; grid on;
+xlim([-200 200]);
+
+%% ----- 10. SPATIAL SNR EVOLUTION -----
+figure(7);
+% Calculate the variance of the signal vs distance to show how noise dominates
+% as the light attenuates.
+signal_power = mean(abs(E_ref_id).^2, 1);
+noise_power = mean(abs(E_ref - E_ref_id).^2, 1);
+snr_dist = 10 * log10(signal_power ./ noise_power);
+
+plot(z_axis, snr_dist, 'LineWidth', 1.5);
+title('Spatial SNR Evolution along the Fiber');
+xlabel('Distance (m)'); ylabel('Local SNR (dB)');
+grid on;
 
 fprintf('\n--- Simulation successfully completed! ---\n');
