@@ -1,7 +1,7 @@
 clear; clc; close all
 
 %% ----- 1. SYSTEM CONFIGURATION & WAVEGUIDE PROPERTIES -----
-clc
+clc; 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 %   The fiber is treated as a series of inhomogeneities with random refractive 
 % indices
@@ -190,7 +190,7 @@ n_pert = n + delta_n_pert;
 %   In this stage, we simulate a frequency-swept probe signal to recover 
 % the Rayleigh Backscatter (RB) spectra, as detailed in the static 
 % measurement section of the paper.
-%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%  
 
 freq_range = 1000e6;        % Total frequency scanning range (e.g., 1 GHz)
 delta_f = 5e6;              % Frequency tuning step (5 MHz)
