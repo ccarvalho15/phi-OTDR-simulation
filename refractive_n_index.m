@@ -49,16 +49,6 @@ d = c * pulse_width / (2 * n_ave);  % Spatial resolution (~1 m)
 M = round(d / dz);                  % Number of scattering segments 
                                     % (inhomogeneities) within one pulse
 
-%   Coherent optical systems can work with roll-off factors ranging from 0.01 
-% to 0.1, implementing a pulse with near-rectangular spectrum.
-% References: 
-%   1. D. A. A. Mello and F. A. Barbosa, Digital Coherent Optical Systems: 
-% Architecture and Algorithms. Cham, Switzerland: Springer, 2021. doi: 
-% 10.1007/978-3-030-66541-8.
-roll_off = 0.1;                                      % Roll-off factor for pulse
-                                                     % shaping (Raised Cosine)
-t_rect = linspace(-pulse_width/2, pulse_width/2, M); % Time vector for pulse window
-
 
 % --- 1.5 NOISE PARAMETERS ---
 %   Laser linewidth: a narrower linewidth (e.g., 1 kHz) would increase 
@@ -82,10 +72,9 @@ fprintf([ ...
     'Total Spatial Points (Nz):             %d\n' ...
     'Number of Scattering Segments (M):     %d\n' ...
     'Attenuation (α):                       %.2f dB/km\n' ...
-    'Roll-off factor (β):                   %.2f\n' ...
     'Laser Linewidth (Δν):                  %.1f kHz\n' ...
     'System Signal-to-Noise Ratio:          %d dB'], ...
-    L, d, Nz, M, attenuation, roll_off, linewidth/1e3, SNR_dB);
+    L, d, Nz, M, attenuation, linewidth/1e3, SNR_dB);
 
 %% ----- 2. GENERATION OF STOCHASTIC RAYLEIGH SCATTERING CENTERS -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -134,8 +123,7 @@ fprintf([ ...
     'Spacing:                               %.2f m\n'], ...
     num_events, pert_length, spacing);
 
-%%
-% --- MAGNITUDE TRADE-OFF (delta_n vs. Correlation Bandwidth) ---
+%% --- MAGNITUDE TRADE-OFF (delta_n vs. Correlation Bandwidth) ---
 %   The speckle pattern generates a correlation peak with a finite bandwidth
 % (FWHM).
 %   For a pulse width of 10 ns (d ~ 1.03 m), the bandwidth is approximately:
@@ -230,33 +218,35 @@ E_sig = zeros(Nf, Nz-M+1);
 E_ref_id = zeros(Nf, Nz-M+1); 
 E_sig_id = zeros(Nf, Nz-M+1); 
 
-%% ----- 4.1 REALISTIC PULSE SHAPPING -----
-%   Instead of a perfecdt retangular pulse, using window  = ones(1, M) where 
-% the optical pulse is modeled as a rectangular window function of length M,
-% we use a Raised Cosine window to model the Electro-Optic Modulator (EOM) 
-% rise and fall times
-%
-% The time-domain Raised Cosine pulse models the EOM output envelope. It is 
-% the inverse Fourier transform of the raised cosine frequency response:
-% h(t) = sinc(t/T) * cos(pi * roll_off * t / pulse_width) / 
-%                                          (1 - (2*roll_off*t/pulse_width)^2)
-% 
+%% ----- 4.1 REALISTIC PULSE SHAPING (RC FILTER MODEL) -----
+%   Instead of an idealized rectangular pulse or a Raised Cosine window, 
+% this section models the Electro-Optic Modulator (EOM) response as a 
+% first-order RC low-pass filter. This accounts for the finite rise/fall 
+% times of the electronic driver.
 
-t_norm = t_rect / pulse_width; % Normalized time
-sinc_term = sinc(t_norm); % sinc time
-cos_term = cos(pi * roll_off * t_norm); % cosine modulation term
-denom = 1 - (2 * roll_off * t_norm).^2; % denominator: goes to zero at t = +-T/(2*roll_off)
+% Filter configuration
+fc = 200e6;             % Filter cutoff frequency (200 MHz)
+RC = 1 / (2 * pi * fc); % RC time constant (s)
 
-% Compute the raised cosine pulse h(t)
-window = sinc_term .* cos_term ./ denom;
+% Local time vector for the pulse duration
+t = linspace(0, pulse_width, M);
+dt = t(2) - t(1); % Time step 
 
-% Using L' Hospital's rule to handle the two singularities
-% lim_{t -> t+- T/(2*beta} h(t) = (pi/4) * sinc(1/2*beta))
-singularity_mask = abs(denom) < 1e-6;
-window(singularity_mask) = (pi/4) * sinc(1 / (2 * roll_off));
+% Define the ideal rectangular input: x(t) = 1 for 0 < t < T
+rect_pulse = ones(1, M);
+
+% Define the RC filter impulse response: h(t) = (1/RC) * exp(-t/RC)
+h = (1 / RC) * exp(- t / RC);
+
+% Obtain the realistic pulse shape via convolution. Multiplying by dt 
+% scales the discrete sum to a physical integral.
+window_conv = conv(rect_pulse, h) * dt;
+
+% We keep the first M points to represent the pulse during the "on" state.
+window = window_conv(1:M);
 
 % Normalize the amplitude to 1 to maintain consistency in backscatter intensity
-window = window / max(abs(window));
+window = window / max(window);
 
 %% ----- 5. COHERENT BACKSCATTER INTEGRATION & NOISE MODELING -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -491,6 +481,22 @@ plot(z_axis, 10*log10(P_ref_loss + eps), 'r', 'DisplayName', ['Fiber Loss (', nu
 hold off;
 title('Backscattered Intensity (Logarithmic Scale)'); 
 ylabel('Power (dBm)'); xlabel('Distance (m)'); grid on;  legend('Location', 'northeast');
+
+%% ----- 9 COMPARISON: IDEAL VS. RC-FILTERED PULSE -----
+figure(6);
+% Plot the RC-Filtered Pulse (Realistic)
+plot(t*1e9, window, 'b', 'LineWidth', 2, 'DisplayName', 'RC-Filtered Pulse');
+hold on;
+% Plot the Ideal Rectangular Pulse
+plot(t*1e9, rect_pulse, '--r', 'LineWidth', 1.5, 'DisplayName', 'Ideal Rectangular Pulse');
+hold off;
+% Graph Formatting
+grid on;
+xlabel('Time (ns)');
+ylabel('Normalized Amplitude');
+title(['Pulse Comparison: Effect of fc = ', num2str(fc/1e6), ' MHz']);
+legend('Location', 'best');
+ylim([-0.1 1.2]);
 
 fprintf('\n--- Simulation successfully completed! ---\n');
 
