@@ -218,35 +218,62 @@ E_sig = zeros(Nf, Nz-M+1);
 E_ref_id = zeros(Nf, Nz-M+1); 
 E_sig_id = zeros(Nf, Nz-M+1); 
 
-%% ----- 4.1 REALISTIC PULSE SHAPING (RC FILTER MODEL) -----
-%   Instead of an idealized rectangular pulse or a Raised Cosine window, 
-% this section models the Electro-Optic Modulator (EOM) response as a 
-% first-order RC low-pass filter. This accounts for the finite rise/fall 
-% times of the electronic driver.
+%% ----- 4.1 REALISTIC PULSE SHAPING -----
 
-% Filter configuration
-fc = 200e6;             % Filter cutoff frequency (200 MHz)
-RC = 1 / (2 * pi * fc); % RC time constant (s)
-
-% Local time vector for the pulse duration
-t = linspace(0, pulse_width, M);
-dt = t(2) - t(1); % Time step 
-
-% Define the ideal rectangular input: x(t) = 1 for 0 < t < T
-rect_pulse = ones(1, M);
-
-% Define the RC filter impulse response: h(t) = (1/RC) * exp(-t/RC)
-h = (1 / RC) * exp(- t / RC);
-
-% Obtain the realistic pulse shape via convolution. Multiplying by dt 
-% scales the discrete sum to a physical integral.
-window_conv = conv(rect_pulse, h) * dt;
-
-% We keep the first M points to represent the pulse during the "on" state.
-window = window_conv(1:M);
-
-% Normalize the amplitude to 1 to maintain consistency in backscatter intensity
-window = window / max(window);
+fprintf('\nSelection of Pulse Shapping:         1) RC Filter Model        2) Super-Gaussian Model\n');
+shape_choice = input('> Option ');
+if shape_choice == 1
+    % ----- 4.1.a REALISTIC PULSE SHAPING (RC FILTER MODEL) -----
+    %   Instead of an idealized rectangular pulse or a Raised Cosine window, 
+    % this section models the Electro-Optic Modulator (EOM) response as a 
+    % first-order RC low-pass filter. This accounts for the finite rise/fall 
+    % times of the electronic driver.
+    
+    % Filter configuration
+    fc = 200e6;             % Filter cutoff frequency (200 MHz)
+    RC = 1 / (2 * pi * fc); % RC time constant (s)
+    
+    % Local time vector for the pulse duration
+    t = linspace(0, pulse_width, M);
+    dt = t(2) - t(1); % Time step 
+    
+    % Define the ideal rectangular input: x(t) = 1 for 0 < t < T
+    rect_pulse = ones(1, M);
+    
+    % Define the RC filter impulse response: h(t) = (1/RC) * exp(-t/RC)
+    h = (1 / RC) * exp(- t / RC);
+    
+    % Obtain the realistic pulse shape via convolution. Multiplying by dt 
+    % scales the discrete sum to a physical integral.
+    window_conv = conv(rect_pulse, h) * dt;
+    
+    % We keep the first M points to represent the pulse during the "on" state.
+    window = window_conv(1:M);
+    
+    % Normalize the amplitude to 1 to maintain consistency in backscatter intensity
+    window = window / max(window);
+elseif shape_choice == 2
+    % ----- 4.1.b REALISTIC PULSE SHAPING (SUPER-GAUSSIAN MODEL) -----
+    % The Super-Gaussian models pulses with smooth transitions and a flat top.
+    
+    order_N = 3; % Order (N=1: Gaussian; N=3-5: Realistic Square)
+    
+    % Corrected Time Vector: centered at zero spanning the pulse width
+    t = linspace(-pulse_width/2, pulse_width/2, M);
+   
+    % We adjust this so the "flat top" roughly matches the pulse_width
+    sigma = (pulse_width / 2);
+    
+    % Generate the Super-Gaussian window
+    % Formula: exp( -0.5 * (t/sigma)^(2N) )
+    window = exp(-0.5 * (t ./ sigma).^(2 * order_N));
+    
+    % Normalize to ensure peak power is 1
+    window = window / max(window);
+    
+    % Re-create a standard rect_pulse of the same length for comparison plots
+    rect_pulse = ones(1, M); 
+end
 
 %% ----- 5. COHERENT BACKSCATTER INTEGRATION & NOISE MODELING -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -482,19 +509,15 @@ hold off;
 title('Backscattered Intensity (Logarithmic Scale)'); 
 ylabel('Power (dBm)'); xlabel('Distance (m)'); grid on;  legend('Location', 'northeast');
 
-%% ----- 9 COMPARISON: IDEAL VS. RC-FILTERED PULSE -----
+%% ----- 9 COMPARISON: IDEAL VS. SUPER-GAUSSIAN OR RC-FILTER -----
 figure(6);
-% Plot the RC-Filtered Pulse (Realistic)
-plot(t*1e9, window, 'b', 'LineWidth', 2, 'DisplayName', 'RC-Filtered Pulse');
+t_rel = linspace(0, pulse_width * 1e9, M);
+plot(t_rel, window, 'b', 'LineWidth', 2, 'DisplayName', 'RC-Filtered Pulse');
 hold on;
-% Plot the Ideal Rectangular Pulse
-plot(t*1e9, rect_pulse, '--r', 'LineWidth', 1.5, 'DisplayName', 'Ideal Rectangular Pulse');
-hold off;
-% Graph Formatting
+plot(t_rel, rect_pulse, '--r', 'LineWidth', 1.5, 'DisplayName', 'Ideal Rectangular Pulse');
+
 grid on;
-xlabel('Time (ns)');
-ylabel('Normalized Amplitude');
-title(['Pulse Comparison: Effect of fc = ', num2str(fc/1e6), ' MHz']);
+xlabel('Time (ns)'); ylabel('Normalized Amplitude'); title('Pulse Shape Comparison');
 legend('Location', 'best');
 ylim([-0.1 1.2]);
 
