@@ -19,10 +19,21 @@ L = 240;                    % Total fiber length used on the lab (m)
 
 %   Attenuation is typically provided in dB/km (logarithmic scale). Standard 
 % single-mode fiber (SMF-28) at 1550nm has approx. 0.19–0.2 dB/km range.
+% References: 
+%   1. D. A. A. Mello and F. A. Barbosa, Digital Coherent Optical Systems: 
+% Architecture and Algorithms. Cham, Switzerland: Springer, 2021. doi: 
+% 10.1007/978-3-030-66541-8.
+%   2. R. Hui, Introduction to Fiber‑Optic Communications. London, UK: 
+% Academic Press/Elsevier, 2020. ISBN: 978‑0‑12‑805345‑4.
 attenuation = 0.2;
 
 %   To use attenuation in the exponential field equations, we must convert 
 % dB/km to the linear attenuation coefficient alpha (m^-1).
+% References: 
+%   1. G. Keiser, Optical Fiber Communications, 4th ed. New York, NY, USA: 
+% McGraw‑Hill, 2011. ISBN: 978‑0‑07‑338071‑1.
+%   2. R. Hui, Introduction to Fiber‑Optic Communications. London, UK: 
+% Academic Press/Elsevier, 2020. ISBN: 978‑0‑12‑805345‑4.
 alpha = attenuation/(10 * log10(exp(1)) * 1000);
 
 
@@ -40,6 +51,10 @@ M = round(d / dz);                  % Number of scattering segments
 
 %   Coherent optical systems can work with roll-off factors ranging from 0.01 
 % to 0.1, implementing a pulse with near-rectangular spectrum.
+% References: 
+%   1. D. A. A. Mello and F. A. Barbosa, Digital Coherent Optical Systems: 
+% Architecture and Algorithms. Cham, Switzerland: Springer, 2021. doi: 
+% 10.1007/978-3-030-66541-8.
 roll_off = 0.1;                                      % Roll-off factor for pulse
                                                      % shaping (Raised Cosine)
 t_rect = linspace(-pulse_width/2, pulse_width/2, M); % Time vector for pulse window
@@ -49,11 +64,15 @@ t_rect = linspace(-pulse_width/2, pulse_width/2, M); % Time vector for pulse win
 %   Laser linewidth: a narrower linewidth (e.g., 1 kHz) would increase 
 % coherence; a wider one (> 1 MHz) would significantly increase phase noise 
 % and degrade the correlation peak.
+% References: 
+%   1. S. Bottacchi, Noise and Signal Interference in Optical Fiber 
+% Transmission Systems: An Optimum Design Approach. Hoboken, NJ, USA: 
+% Wiley, 2009. ISBN: 978‑0‑470‑77056‑3.
 linewidth = 100e3; % 100 kHz
-%   OSNR_dB: 20 dB is a common operating point for lab-bench systems, providing a 
+%   SNR_dB: 20 dB is a common operating point for lab-bench systems, providing a 
 % balance between sufficient signal strength and realistic noise levels to 
 % test signal processing algorithms.
-OSNR_dB = 20; % in dB
+SNR_dB = 20; % in dB
 
 
 fprintf('--- Fiber Simulation Initialization ---\n');
@@ -66,7 +85,7 @@ fprintf([ ...
     'Roll-off factor (β):                   %.2f\n' ...
     'Laser Linewidth (Δν):                  %.1f kHz\n' ...
     'System Signal-to-Noise Ratio:          %d dB'], ...
-    L, d, Nz, M, attenuation, roll_off, linewidth/1e3, OSNR_dB);
+    L, d, Nz, M, attenuation, roll_off, linewidth/1e3, SNR_dB);
 
 %% ----- 2. GENERATION OF STOCHASTIC RAYLEIGH SCATTERING CENTERS -----
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -106,13 +125,13 @@ delta_n_pert = zeros(1, Nz);
 
 % CONFIGURATION OF SENSING EVENTS
 num_events = 5;         % Number of discrete perturbation zones
-pert_length = 2;        % Spatial width of each perturbation event (m)
+pert_length = 1.5;        % Spatial width of each perturbation event (m)
 spacing = 4;            % Spatial separation between events (m)
 
 fprintf([ ...
     '\nNumber of events:                      %d\n' ...
     'Width of each event:                   %.2f m\n' ...
-    'Spacing (Nz):                          %.2f m\n'], ...
+    'Spacing:                               %.2f m\n'], ...
     num_events, pert_length, spacing);
 
 %%
@@ -247,7 +266,7 @@ window = window / max(abs(window));
 %
 % NOISE MODEL:
 % - Laser Phase Noise: Modeled as a Wiener Process (aka Random Walk), the
-% phase uncertainty accumulates with time (and thus distance(.
+% phase uncertainty accumulates with time (and thus distance).
 % - Receiver Noise: Combines thermal and shot noise, and it's added as
 % complex additive white Guassian noise to the field
 %%%%%%%%%%%%%%%%%%%%%%%%%
@@ -296,11 +315,12 @@ for f_idx = 1:Nf
     std_dvt_phase = sqrt(2 * pi * linewidth * tau); % sqrt(2 * pi * linewidth * tau)
     
     % Generate independent phase noise for this specific frequency step
-    laser_phase_noise = std_dvt_phase .* randn(size(E_ref_conv));
+    laser_phase_noise_ref = std_dvt_phase .* randn(size(E_ref_conv));
+    laser_phase_noise_sig = std_dvt_phase .* randn(size(E_sig_conv));
         
     % Apply the stochastic phase jitter to the complex fields
-    E_ref_conv = E_ref_conv .* exp(1j * laser_phase_noise);
-    E_sig_conv = E_sig_conv .* exp(1j * laser_phase_noise);
+    E_ref_conv = E_ref_conv .* exp(1j * laser_phase_noise_ref);
+    E_sig_conv = E_sig_conv .* exp(1j * laser_phase_noise_sig);
 
     
     % --- 5.4 Fiber Loss (Beer-Lambert Law) ---
@@ -319,8 +339,8 @@ for f_idx = 1:Nf
     % Simulates the electronic noise floor (Thermal) and photon counting 
     % noise (Shot). The 'measured' flag ensures the noise power is scaled 
     % relative to the signal power.
-    E_ref(f_idx, :) = awgn(E_ref_raw, OSNR_dB, 'measured');
-    E_sig(f_idx, :) = awgn(E_sig_raw, OSNR_dB, 'measured');
+    E_ref(f_idx, :) = awgn(E_ref_raw, SNR_dB, 'measured');
+    E_sig(f_idx, :) = awgn(E_sig_raw, SNR_dB, 'measured');
 
     % Store ideal fields for performance benchmarking
     E_ref_id(f_idx, :) = E_ref_conv;
@@ -388,7 +408,7 @@ view(35, 45); colormap('jet'); colorbar;
 xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
 title('3D Cross-Correlation Map');
 rotate3d on;
-xlim([max(210, first_event - 50) min(L, last_event + 50)]);  % Fiber length
+xlim([max(210, first_event - 10) min(L, last_event + 10)]);  % Fiber length
 ylim([-250 250]); % Frequency shift window
 zlim([-0.5 1]); % Correlation magnitude scale
 
@@ -434,74 +454,43 @@ ylim([-250 250]); % Frequency shift window
 zlim([-0.5 1]); % Correlation magnitude scale
 
 %% ----- 8. ATTENUATION IMPACT ANALYSIS -----
+
+% Power configuration
+P_input_mW = 10; % Source power in milliwatts (10 mW)
+% To convert mW to dBm: P [dBm] = 10 * log10 (P [mW] / 1 [mW])
+P_input_dBm = 10 * log10(P_input_mW / 1); % Logarithmic power reference (10 dBm)
+
+% Normalizing electric field
+% Calculates the scaling factor to map dimensionless simulated fields to 
+% physical mW. Using mean of the first point to stabilize against coherent 
+% fading (speckle).
+scale_factor = P_input_mW / mean(abs(E_ref_id(1,:))).^2;
+
+% Select the first frequency from the sweep for visualization
+P_ref_ideal = abs(E_ref_id(1, :)).^2 * scale_factor;
+P_ref_loss = abs(E_ref(1, :)).^2 * scale_factor;
+
 % Comparing the backscattered intensity with and without fiber loss
 figure (5);
-% Select the first frequency from the sweep for visualization
-P_ref_loss = abs(E_ref(1, :)).^2;
-P_ref_ideal = abs(E_ref_id(1, :)).^2;
-
 z_axis = z(1:length(P_ref_loss));
 
 % Subplot 1: Linear Scale
 subplot(2,1,1);
-plot(z_axis, P_ref_ideal, 'b', 'DisplayName', 'No Attenuation (\alpha = 0)');
+plot(z_axis, P_ref_ideal, 'b', 'DisplayName', 'Ideal (No Loss)');
 hold on;
-plot(z_axis, P_ref_loss, 'r', 'DisplayName', ['With Attenuation (\alpha = ', num2str(attenuation), ' dB/km)']);
+plot(z_axis, P_ref_loss, 'r', 'DisplayName', ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
 hold off;
-title('Backscattered Intensity (Linear Scale)'); ylabel('Power (a.u.)'); legend('Location', 'northeast'); grid on;
+title('Backscattered Intensity (Linear Scale)'); 
+xlabel('Distance (m)'); ylabel('Power (mW)'); legend('Location', 'northeast'); grid on;
 
 % Subplot 2: Logarithmic Scale (OTDR Trace)
 subplot(2,1,2);
-plot(z_axis, 10*log10(P_ref_ideal + eps), 'b');
+plot(z_axis, 10*log10(P_ref_ideal + eps), 'b', 'DisplayName', 'Ideal (No Loss)');
 hold on;
-plot(z_axis, 10*log10(P_ref_loss + eps), 'r');
+plot(z_axis, 10*log10(P_ref_loss + eps), 'r', 'DisplayName', ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
 hold off;
-title('Backscattered Intensity (Logarithmic Scale - OTDR Trace)'); ylabel('Power (dB)'); xlabel('Distance (m)'); grid on;
-
-%% ----- 9. NOISE IMPACT VISUALIZATION -----
-% We will compare the Ideal signal (E_ref_id) vs the Noisy signal (E_ref)
-
-figure(6);
-% Select a specific position (e.g., at 100 meters) to see the Spectral Distortion
-pos_idx = round(100/dz); 
-spectra_ideal = abs(E_ref_id(:, pos_idx)).^2;
-spectra_noisy = abs(E_ref(:, pos_idx)).^2;
-
-subplot(2,1,1);
-plot(f/1e6, spectra_ideal, 'b--', 'LineWidth', 1, 'DisplayName', 'Ideal Spectrum');
-hold on;
-plot(f/1e6, spectra_noisy, 'r', 'DisplayName', 'Noisy (Phase + AWGN)');
-hold off;
-title(['Effect of Noise on Rayleigh Spectrum at ', num2str(z(pos_idx)), ' m']);
-xlabel('Frequency (MHz)'); ylabel('Intensity (a.u.)');
-legend; grid on;
-
-% Subplot 2: Show the effect on the Correlation Peak
-% We take the cross-correlation of the signal with itself at that position
-[cv_id, lags_id] = xcorr(spectra_ideal - mean(spectra_ideal), 'coeff');
-[cv_noise, lags_noise] = xcorr(spectra_noisy - mean(spectra_noisy), 'coeff');
-
-subplot(2,1,2);
-plot(lags_id * delta_f / 1e6, cv_id, 'b--', 'DisplayName', 'Ideal Peak');
-hold on;
-plot(lags_noise * delta_f / 1e6, cv_noise, 'r', 'DisplayName', 'Noisy Peak');
-hold off;
-title('Correlation Peak Degradation');
-xlabel('Frequency Lag (MHz)'); ylabel('Correlation Coefficient');
-legend; grid on;
-xlim([-200 200]);
-
-%% ----- 10. SPATIAL SNR EVOLUTION -----
-figure(7);
-% Calculate the variance of the signal vs distance to show how noise dominates
-% as the light attenuates.
-signal_power = mean(abs(E_ref_id).^2, 1);
-noise_power = mean(abs(E_ref - E_ref_id).^2, 1);
-snr_dist = 10 * log10(signal_power ./ noise_power);
-
-plot(z_axis, snr_dist, 'LineWidth', 1.5);
-title('Spatial SNR Evolution along the Fiber');
-xlabel('Distance (m)'); ylabel('Local SNR (dB)');
-grid on;
+title('Backscattered Intensity (Logarithmic Scale)'); 
+ylabel('Power (dBm)'); xlabel('Distance (m)'); grid on;  legend('Location', 'northeast');
 
 fprintf('\n--- Simulation successfully completed! ---\n');
+
