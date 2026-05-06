@@ -20,20 +20,15 @@ L = 240;                    % Total fiber length used on the lab (m)
 %   Attenuation is typically provided in dB/km (logarithmic scale). Standard 
 % single-mode fiber (SMF-28) at 1550nm has approx. 0.19–0.2 dB/km range.
 % References: 
-%   1. D. A. A. Mello and F. A. Barbosa, Digital Coherent Optical Systems: 
-% Architecture and Algorithms. Cham, Switzerland: Springer, 2021. doi: 
-% 10.1007/978-3-030-66541-8.
-%   2. R. Hui, Introduction to Fiber‑Optic Communications. London, UK: 
-% Academic Press/Elsevier, 2020. ISBN: 978‑0‑12‑805345‑4.
+%   1. Digital Coherent Optical Systems: Architecture and Algorithms. 2021
+%   2. Introduction to Fiber‑Optic Communications. 2020.
 attenuation = 0.2;
 
 %   To use attenuation in the exponential field equations, we must convert 
 % dB/km to the linear attenuation coefficient alpha (m^-1).
 % References: 
-%   1. G. Keiser, Optical Fiber Communications, 4th ed. New York, NY, USA: 
-% McGraw‑Hill, 2011. ISBN: 978‑0‑07‑338071‑1.
-%   2. R. Hui, Introduction to Fiber‑Optic Communications. London, UK: 
-% Academic Press/Elsevier, 2020. ISBN: 978‑0‑12‑805345‑4.
+%   1. Optical Fiber Communications. 2011.
+%   2. Introduction to Fiber‑Optic Communications. 2020.
 alpha = attenuation/(10 * log10(exp(1)) * 1000);
 
 
@@ -261,12 +256,16 @@ elseif shape_choice == 2
     % Corrected Time Vector: centered at zero spanning the pulse width
     t = linspace(-pulse_width/2, pulse_width/2, M);
    
-    % We adjust this so the "flat top" roughly matches the pulse_width
-    sigma = (pulse_width / 2);
-    
     % Generate the Super-Gaussian window
-    % Formula: exp( -0.5 * (t/sigma)^(2N) )
-    window = exp(-0.5 * (t ./ sigma).^(2 * order_N));
+    % y = sgauss(t,Tfwhm,E,C,m);
+    % PARAMETERS
+    % t         time 
+    % Tfwhm     full-width at half maximum of the pulse power (default = 1)
+    % E         pulse energy (default = 1)
+    % C         chirp parameter (default = 0 for unchirped pulse)
+    % m         pulse order (sharpness) (default = 1 for Gaussian shape)
+    % Parameters: sguass(time, pulse width, order)
+    window = sgauss(t, pulse_width, 1, 0, order_N);
     
     % Normalize to ensure peak power is 1
     window = window / max(window);
@@ -512,14 +511,26 @@ ylabel('Power (dBm)'); xlabel('Distance (m)'); grid on;  legend('Location', 'nor
 %% ----- 9 COMPARISON: IDEAL VS. SUPER-GAUSSIAN OR RC-FILTER -----
 figure(6);
 t_rel = linspace(0, pulse_width * 1e9, M);
-plot(t_rel, window, 'b', 'LineWidth', 2, 'DisplayName', 'RC-Filtered Pulse');
-hold on;
-plot(t_rel, rect_pulse, '--r', 'LineWidth', 1.5, 'DisplayName', 'Ideal Rectangular Pulse');
+if shape_choice == 1
+    plot(t_rel, window, 'b', 'LineWidth', 2, 'DisplayName', 'RC-Filtered Pulse');
+    hold on;
+    plot(t_rel, rect_pulse, '--r', 'LineWidth', 1.5, 'DisplayName', 'Ideal Rectangular Pulse');
+    hold off;
+    grid on;
+    xlabel('Time (ns)'); ylabel('Normalized Amplitude'); title('Pulse Shape Comparison');
+    legend('Location', 'best');
+    ylim([-0.1 1.2]);
+else
+    plot(t_rel, window, 'b', 'LineWidth', 2, 'DisplayName', 'Super Gaussian Pulse');
+    hold on;
+    plot(t_rel, rect_pulse, '--r', 'LineWidth', 1.5, 'DisplayName', 'Ideal Rectangular Pulse');
+    hold off;
+    grid on;
+    xlabel('Time (ns)'); ylabel('Normalized Amplitude'); title('Pulse Shape Comparison');
+    legend('Location', 'best');
+    ylim([-0.1 1.2]);
+end
 
-grid on;
-xlabel('Time (ns)'); ylabel('Normalized Amplitude'); title('Pulse Shape Comparison');
-legend('Location', 'best');
-ylim([-0.1 1.2]);
 
 fprintf('\n--- Simulation successfully completed! ---\n');
 
