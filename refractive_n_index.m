@@ -31,6 +31,10 @@ attenuation = 0.2;
 %   2. Introduction to Fiber‑Optic Communications. 2020.
 alpha = attenuation/(10 * log10(exp(1)) * 1000);
 
+% Power configuration
+P_input_mW = 10; % Source power in milliwatts (10 mW)
+% To convert mW to dBm: P [dBm] = 10 * log10 (P [mW] / 1 [mW])
+P_input_dBm = 10 * log10(P_input_mW / 1); % Logarithmic power reference (10 dBm)
 
 % --- 1.3 SPATIAL SAMPLING AND RESOLUTION
 dz = 0.05;                  % Spatial sampling interval (m)
@@ -50,9 +54,8 @@ M = round(d / dz);                  % Number of scattering segments
 % coherence; a wider one (> 1 MHz) would significantly increase phase noise 
 % and degrade the correlation peak.
 % References: 
-%   1. S. Bottacchi, Noise and Signal Interference in Optical Fiber 
-% Transmission Systems: An Optimum Design Approach. Hoboken, NJ, USA: 
-% Wiley, 2009. ISBN: 978‑0‑470‑77056‑3.
+%   1. Noise and Signal Interference in Optical Fiber Transmission Systems: 
+% An Optimum Design Approach. 2009.
 linewidth = 100e3; % 100 kHz
 %   SNR_dB: 20 dB is a common operating point for lab-bench systems, providing a 
 % balance between sufficient signal strength and realistic noise levels to 
@@ -213,6 +216,10 @@ E_sig = zeros(Nf, Nz-M+1);
 E_ref_id = zeros(Nf, Nz-M+1); 
 E_sig_id = zeros(Nf, Nz-M+1); 
 
+% To analyze SNR between ideal signal and degraded signal
+E_ref_raw_all = zeros(Nf, Nz-M+1);
+E_sig_raw_all = zeros(Nf, Nz-M+1);
+
 %% ----- 4.1 REALISTIC PULSE SHAPING -----
 
 fprintf('\nSelection of Pulse Shapping:         1) RC Filter Model        2) Super-Gaussian Model\n');
@@ -251,7 +258,7 @@ elseif shape_choice == 2
     % ----- 4.1.b REALISTIC PULSE SHAPING (SUPER-GAUSSIAN MODEL) -----
     % The Super-Gaussian models pulses with smooth transitions and a flat top.
     
-    order_N = 3; % Order (N=1: Gaussian; N=3-5: Realistic Square)
+    order_N = 1; % Order (N=1: Gaussian; N=3-5: Realistic Square)
     
     % Corrected Time Vector: centered at zero spanning the pulse width
     t = linspace(-pulse_width/2, pulse_width/2, M);
@@ -286,11 +293,13 @@ end
 % - Receiver Noise: Combines thermal and shot noise, and it's added as
 % complex additive white Guassian noise to the field
 %%%%%%%%%%%%%%%%%%%%%%%%%
+z_valid = z(1 : (Nz - M + 1));
+tau = 2 * n_ave * z_valid / c;
 
 for f_idx = 1:Nf
     current_nu = f(f_idx);
+    shift = current_nu - nu0;
     
-
     % --- 5.1 Propagation Phase Calculation ---
     % beta: propagation constant
     % phi: spatial integral of beta along the fiber (cumsum).
@@ -303,7 +312,6 @@ for f_idx = 1:Nf
     % This captures the phase shift induced by the sensing event (strain/temp).
     beta_sig = 2 * pi * n_pert * current_nu / c;
     phi_sig = cumsum(beta_sig) * dz;
-
 
     % --- 5.2 Electric Field Construction via Convolution ---
     % WHY CONVOLUTION ('conv')? 
@@ -321,24 +329,10 @@ for f_idx = 1:Nf
     E_ref_conv = conv(r .* exp(1j * 2 * phi_ref), window, 'valid');
     E_sig_conv = conv(r .* exp(1j * 2 * phi_sig), window, 'valid');
 
-    % Adjust distance vector for 'valid' conv
-    z_valid = z(1:length(E_ref_conv)); 
-
-
     % --- 5.3 Laser Phase Noise (Transmitter Impairment) ---
     % Phase noise variance increases linearly with the round-trip delay (tau) 
-    tau = 2 * n_ave * z_valid / c; % Time delay
-    std_dvt_phase = sqrt(2 * pi * linewidth * tau); % sqrt(2 * pi * linewidth * tau)
-    
-    % Generate independent phase noise for this specific frequency step
-    laser_phase_noise_ref = std_dvt_phase .* randn(size(E_ref_conv));
-    laser_phase_noise_sig = std_dvt_phase .* randn(size(E_sig_conv));
-        
-    % Apply the stochastic phase jitter to the complex fields
-    E_ref_conv = E_ref_conv .* exp(1j * laser_phase_noise_ref);
-    E_sig_conv = E_sig_conv .* exp(1j * laser_phase_noise_sig);
+    E_laser = lasercw(tau, 10, 0, linewidth, shift);
 
-    
     % --- 5.4 Fiber Loss (Beer-Lambert Law) ---
     % As the light travels to distance 'z' and back to the detector (round-trip),
     % the electric field amplitude decays exponentially.
@@ -347,9 +341,8 @@ for f_idx = 1:Nf
     % over distance '2z' is exp(-(alpha/2) * 2z) = exp(-alpha * z).
     loss_factor = exp(-alpha * z_valid);
 
-    E_ref_raw = loss_factor .* E_ref_conv;
-    E_sig_raw = loss_factor .* E_sig_conv;
-
+    E_ref_raw = E_ref_conv .* E_laser .* loss_factor;
+    E_sig_raw = E_sig_conv .* E_laser .* loss_factor;
 
     % --- 5.5 Additive White Gaussian Noise (Receiver Impairment) ---
     % Simulates the electronic noise floor (Thermal) and photon counting 
@@ -361,6 +354,10 @@ for f_idx = 1:Nf
     % Store ideal fields for performance benchmarking
     E_ref_id(f_idx, :) = E_ref_conv;
     E_sig_id(f_idx, :) = E_sig_conv;
+
+    % Store no ideal fields for performance benchmarking
+    E_ref_raw_all(f_idx, :) = E_ref_raw;
+    E_sig_raw_all(f_idx, :) = E_sig_raw;
 
 end
 
@@ -471,11 +468,6 @@ zlim([-0.5 1]); % Correlation magnitude scale
 
 %% ----- 8. ATTENUATION IMPACT ANALYSIS -----
 
-% Power configuration
-P_input_mW = 10; % Source power in milliwatts (10 mW)
-% To convert mW to dBm: P [dBm] = 10 * log10 (P [mW] / 1 [mW])
-P_input_dBm = 10 * log10(P_input_mW / 1); % Logarithmic power reference (10 dBm)
-
 % Normalizing electric field
 % Calculates the scaling factor to map dimensionless simulated fields to 
 % physical mW. Using mean of the first point to stabilize against coherent 
@@ -490,17 +482,17 @@ P_ref_loss = abs(E_ref(1, :)).^2 * scale_factor;
 figure (5);
 z_axis = z(1:length(P_ref_loss));
 
-% Subplot 1: Linear Scale
-subplot(2,1,1);
-plot(z_axis, P_ref_ideal, 'b', 'DisplayName', 'Ideal (No Loss)');
-hold on;
-plot(z_axis, P_ref_loss, 'r', 'DisplayName', ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
-hold off;
-title('Backscattered Intensity (Linear Scale)'); 
-xlabel('Distance (m)'); ylabel('Power (mW)'); legend('Location', 'northeast'); grid on;
+% % Subplot 1: Linear Scale
+% subplot(2,1,1);
+% plot(z_axis, P_ref_ideal, 'b', 'DisplayName', 'Ideal (No Loss)');
+% hold on;
+% plot(z_axis, P_ref_loss, 'r', 'DisplayName', ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
+% hold off;
+% title('Backscattered Intensity (Linear Scale)'); 
+% xlabel('Distance (m)'); ylabel('Power (mW)'); legend('Location', 'northeast'); grid on;
 
 % Subplot 2: Logarithmic Scale (OTDR Trace)
-subplot(2,1,2);
+% subplot(2,1,2);
 plot(z_axis, 10*log10(P_ref_ideal + eps), 'b', 'DisplayName', 'Ideal (No Loss)');
 hold on;
 plot(z_axis, 10*log10(P_ref_loss + eps), 'r', 'DisplayName', ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
@@ -531,6 +523,7 @@ else
     ylim([-0.1 1.2]);
 end
 
+%%
 
 fprintf('\n--- Simulation successfully completed! ---\n');
 
