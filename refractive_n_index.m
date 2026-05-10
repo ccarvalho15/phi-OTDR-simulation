@@ -1,96 +1,121 @@
 clear; clc; close all
 
-%% ----- 1. SYSTEM CONFIGURATION & WAVEGUIDE PROPERTIES -----
+%% ========================================================================
+% 1. SYSTEM CONFIGURATION & WAVEGUIDE PROPERTIES
+% ========================================================================
 clc; 
-%%%%%%%%%%%%%%%%%%%%%%%%%
 %   The fiber is treated as a series of inhomogeneities with random refractive 
 % indices
-%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 % --- 1.1 PHYSICAL AND OPTICAL CONSTANTS ---
 c = 3e8;                    % Speed of light in vacuum (m/s)
 lambda0 = 1550e-9;          % Operating wavelength (m)
 nu0 = c/lambda0;            % Central optical frequency (Hz)
-n_ave = 1.456;              % Average refractive index of the silica fiber
 
 
-% --- 1.2 FIBER PROPERTIES AND OPTICAL ATTENUATION (LOSS) SETUP ---
-L = 240;                    % Total fiber length used on the lab (m) 
+% --- 1.2 FIBER MEDIUM PROPERTIES ---
+L = 240;           % Total fiber length used on the lab (m) 
+n_ave = 1.456;     % Average refractive index of the silica fiber
+attenuation = 0.2; % Attenuation is typically provided in dB/km (logarithmic 
+                   % scale). Standard single-mode fiber (SMF-28) at 1550nm 
+                   % has approx. 0.19–0.2 dB/km range.
+% References: [1] Digital Coherent Optical Systems: Architecture and Algorithms. 2021
+%             [2] Introduction to Fiber‑Optic Communications. 2020.
 
-%   Attenuation is typically provided in dB/km (logarithmic scale). Standard 
-% single-mode fiber (SMF-28) at 1550nm has approx. 0.19–0.2 dB/km range.
-% References: 
-%   1. Digital Coherent Optical Systems: Architecture and Algorithms. 2021
-%   2. Introduction to Fiber‑Optic Communications. 2020.
-attenuation = 0.2;
 
+% --- 1.3 LOSS & POWER CALIBRATION ---
 %   To use attenuation in the exponential field equations, we must convert 
 % dB/km to the linear attenuation coefficient alpha (m^-1).
-% References: 
-%   1. Optical Fiber Communications. 2011.
-%   2. Introduction to Fiber‑Optic Communications. 2020.
-alpha = attenuation/(10 * log10(exp(1)) * 1000);
+alpha = attenuation/(10 * log10(exp(1)) * 1000); 
+% References: [1] Optical Fiber Communications. 2011.
+%             [2] Introduction to Fiber‑Optic Communications. 2020.
 
-% Power configuration
-P_input_mW = 10; % Source power in milliwatts (10 mW)
-% To convert mW to dBm: P [dBm] = 10 * log10 (P [mW] / 1 [mW])
+%   To convert mW to dBm: P [dBm] = 10 * log10 (P [mW] / 1 [mW])
+P_input_mW = 10;                          % Source power in milliwatts (10 mW)
 P_input_dBm = 10 * log10(P_input_mW / 1); % Logarithmic power reference (10 dBm)
 
-% --- 1.3 SPATIAL SAMPLING AND RESOLUTION
-dz = 0.05;                  % Spatial sampling interval (m)
-z = 0:dz:L-dz;              % Distance vector along the fiber 1D model
-Nz = length(z);             % Total number os spatial sampling points
+
+% --- 1.4 DISCRETE SAMPLING ---
+dz = 0.05;       % Spatial sampling interval (m)
+z = 0:dz:L-dz;   % Distance vector along the fiber 1D model
+Nz = length(z);  % Total number os spatial sampling points
 
 
-% 1.4 --- PULSE AND MODULATION CHARACTERISTICS ---
+% --- 1.5 PULSE-LIMITED RESOLUTION ---
 pulse_width = 10e-9;                % Temporal pulse width (10 ns)
 d = c * pulse_width / (2 * n_ave);  % Spatial resolution (~1 m)
 M = round(d / dz);                  % Number of scattering segments 
                                     % (inhomogeneities) within one pulse
 
 
-% --- 1.5 NOISE PARAMETERS ---
+% --- 1.6 PHASE & AMPLITUDE NOISE ---
+linewidth = 100e3;     % Laser linewidth (100 kHz)
+SNR_dB = 20;           % System Signal-to-Noise Ratio (dB)
+sigma_n = 2e-6;        % Standard deviation of index fluctuations 
+
 %   Laser linewidth: a narrower linewidth (e.g., 1 kHz) would increase 
 % coherence; a wider one (> 1 MHz) would significantly increase phase noise 
 % and degrade the correlation peak.
-% References: 
-%   1. Noise and Signal Interference in Optical Fiber Transmission Systems: 
-% An Optimum Design Approach. 2009.
-linewidth = 100e3; % 100 kHz
+% References: [1] Noise and Signal Interference in Optical Fiber Transmission Systems: 
+%                 An Optimum Design Approach. 2009.
 %   SNR_dB: 20 dB is a common operating point for lab-bench systems, providing a 
 % balance between sufficient signal strength and realistic noise levels to 
 % test signal processing algorithms.
-SNR_dB = 20; % in dB
 
 
-fprintf('--- Fiber Simulation Initialization ---\n');
+% --- 1.7 FREQUENCY SWEEP (SPECTRAL SCAN) ---
+freq_range = 1000e6;        % Total frequency scanning range (e.g., 1 GHz)
+delta_f = 5e6;              % Frequency tuning step (5 MHz)
+% Vector of absolute optical frequencies (nu) centered around the carrier frequency nu0
+f = nu0 + (-freq_range/2 : delta_f : freq_range/2);  
+Nf = length(f);
+
+
+% --- 1.8 SPATIAL DISTRIBUTION ---
+num_events  = 5;        % Número de zonas de perturbação
+pert_length = 1.5;      % Spatial width of each perturbation event (m)
+spacing = 4;            % Spatial separation between events (m)
+sensing_zone = L - 30;  % Defining the sensing zone starting point (e.g., 
+                        % L-30 meters)
+
+fprintf(' ==== PHI-OTDR SIMULATION CONFIGURATION ==== \n');
 fprintf([ ...
-    'Fiber Length (L):                      %d m\n' ...
-    'Spatial Resolution (d):                %.2f m\n' ...
-    'Total Spatial Points (Nz):             %d\n' ...
-    'Number of Scattering Segments (M):     %d\n' ...
-    'Attenuation (α):                       %.2f dB/km\n' ...
-    'Laser Linewidth (Δν):                  %.1f kHz\n' ...
-    'System Signal-to-Noise Ratio:          %d dB'], ...
-    L, d, Nz, M, attenuation, linewidth/1e3, SNR_dB);
+    'Fiber Length (L):                      %d m                           Input Power:                           %d mW (%.1f dBm)\n' ...
+    'Spatial Resolution (d):                %.2f m                          Sweep Range:                           %d MHz\n' ...
+    'Total Spatial Points (Nz)              %d                            Frequency step (Δf):                   %d MHz\n' ...
+    'Number of Scattering Segments (M):     %d                              Number of frequencies (Nf):            %d\n' ...
+    'Sampling Interval (dz):                %.3f m                         Laser Linewidth (Δν):                  %.1f kHz\n' ...                   
+    'Attenuation:                           %.2f dB/km                      System SNR:                            %d dB\n' ...
+    'Attenuation Coefficient (α):           %.4e m^-1                 Index standard deviation (σ_n):        %.1e\n' ...
+    'Average Refractive Index (n_ave):      %.3f                           Number of Events:                      %d\n' ...
+    'Operating Wavelength (lambda_0):       %d nm                         Width of each event:                   %.2f m\n'...
+    'Central frequency (nu_0)               %.4e Hz                   Separation between events:             %.2f m\n'...
+    'Pulse Width:                           %d ns                           Sensing Zone Start:                    %d m\n'], ...
+    L, P_input_mW, P_input_dBm, d, freq_range/1e6, Nz, delta_f/1e6, M, Nf, ...
+    dz, linewidth/1e3, attenuation, SNR_dB, alpha, sigma_n, n_ave, num_events, ...
+    lambda0*1e9, pert_length, nu0, spacing, pulse_width*1e9, sensing_zone);
 
-%% ----- 2. GENERATION OF STOCHASTIC RAYLEIGH SCATTERING CENTERS -----
-%%%%%%%%%%%%%%%%%%%%%%%%%
+        
+
+%% ========================================================================
+% 2. GENERATION OF STOCHASTIC RAYLEIGH SCATTERING CENTERS 
+% ========================================================================
 %   Modeling the fiber as a 1D waveguide with random inhomogeneities. According 
 % to the paper, Rayleigh scattering is simulated by small fluctuations in 
 % the refractive index along the fiber core.
-%%%%%%%%%%%%%%%%%%%%%%%%%
 
-sigma_n = 2e-6;                     % Standard deviation of index fluctuations 
+
 delta_n = sigma_n * randn(1, Nz);   % Gaussian distributed random index variations
 n = n_ave + delta_n;                % Resulting refractive index profile, n(z)
 
-% FRESNEL REFLECTION COEFFICIENT
-%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ========================================================================
+% 2.1 FRESNEL REFLECTION COEFFICIENT
+% ========================================================================
 %   Calculation of the local reflection coefficient (r) at each interface.
 %   The model treats each 'dz' step as a discrete boundary between media 
 % with slightly different refractive indices.
-%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 r = zeros(1, Nz);
 for i = 1:Nz-1
@@ -99,29 +124,18 @@ for i = 1:Nz-1
     r(i) = (n(i) - n(i+1)) / (n(i) + n(i+1));
 end
 
-%% ----- 3. MODELING OF ENVIRONMENTAL SENSING EVENTS (STRAIN/TEMP) -----
-%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ========================================================================
+% 3. MODELING OF ENVIRONMENTAL SENSING EVENTS (STRAIN/TEMP)
+% ========================================================================
 %   Following the approach of Lu & Thomas, environmental perturbations 
 % (e.g., strain or temperature) are modeled as localized modulations of the 
 % refractive index profile.
 %   Based on Lu & Thomas, temperature changes modulate the phase via dn/dT.
 % For Silica: dn/dT approx. 1.1e-5 
-%%%%%%%%%%%%%%%%%%%%%%%%%
 
 delta_n_pert = zeros(1, Nz);
 
-% CONFIGURATION OF SENSING EVENTS
-num_events = 5;         % Number of discrete perturbation zones
-pert_length = 1.5;        % Spatial width of each perturbation event (m)
-spacing = 4;            % Spatial separation between events (m)
-
-fprintf([ ...
-    '\nNumber of events:                      %d\n' ...
-    'Width of each event:                   %.2f m\n' ...
-    'Spacing:                               %.2f m\n'], ...
-    num_events, pert_length, spacing);
-
-%% --- MAGNITUDE TRADE-OFF (delta_n vs. Correlation Bandwidth) ---
+% --- MAGNITUDE TRADE-OFF (delta_n vs. Correlation Bandwidth) ---
 %   The speckle pattern generates a correlation peak with a finite bandwidth
 % (FWHM).
 %   For a pulse width of 10 ns (d ~ 1.03 m), the bandwidth is approximately:
@@ -149,10 +163,7 @@ else
     min_mag = 1e-7; 
     max_mag = 5e-7;
     fprintf('Invalid input. Defaulting to Realistic Micro-events.\n');
-end
-%% 
-% Defining the sensing zone starting point (e.g., L-30 meters)
-sensing_zone = L - 30;
+end 
 
 % Check if defined events fit within total fiber length L
 total = (num_events * pert_length) + ((num_events - 1) * spacing);
@@ -190,19 +201,13 @@ end
 % Final perturbed refractive index profile used for backscatter calculation
 n_pert = n + delta_n_pert;
 
-%% ----- 4. PROBE SIGNAL & FREQUENCY SWEEP PARAMETERS -----
-%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ========================================================================
+% 4. PROBE SIGNAL & FREQUENCY SWEEP PARAMETERS 
+% ========================================================================
 %   In this stage, we simulate a frequency-swept probe signal to recover 
 % the Rayleigh Backscatter (RB) spectra, as detailed in the static 
 % measurement section of the paper.
-%%%%%%%%%%%%%%%%%%%%%%%%%  
 
-freq_range = 1000e6;        % Total frequency scanning range (e.g., 1 GHz)
-delta_f = 5e6;              % Frequency tuning step (5 MHz)
-
-% Vector of absolute optical frequencies (nu) centered around the carrier frequency nu0
-f = nu0 + (-freq_range/2 : delta_f : freq_range/2);  
-Nf = length(f);
 
 % Pre-allocation of matrices for the backscattered electric fields
 % - Rows represent frequency components; 
@@ -220,69 +225,132 @@ E_sig_id = zeros(Nf, Nz-M+1);
 E_ref_raw_all = zeros(Nf, Nz-M+1);
 E_sig_raw_all = zeros(Nf, Nz-M+1);
 
-%% ----- 4.1 REALISTIC PULSE SHAPING -----
+%% ========================================================================
+% 4.1 REALISTIC PULSE SHAPING 
+% ========================================================================
 
 fprintf('\nSelection of Pulse Shapping:         1) RC Filter Model        2) Super-Gaussian Model\n');
 shape_choice = input('> Option ');
 if shape_choice == 1
     % ----- 4.1.a REALISTIC PULSE SHAPING (RC FILTER MODEL) -----
-    %   Instead of an idealized rectangular pulse or a Raised Cosine window, 
-    % this section models the Electro-Optic Modulator (EOM) response as a 
-    % first-order RC low-pass filter. This accounts for the finite rise/fall 
-    % times of the electronic driver.
+    % This section models the Electro-Optic Modulator (EOM) response as a 
+    % first-order RC low-pass filter. This simulates the hardware constraints 
+    % where the electronic driver cannot switch instantaneously, resulting 
+    % in finite rise and fall times.
     
     % Filter configuration
-    fc = 200e6;             % Filter cutoff frequency (200 MHz)
-    RC = 1 / (2 * pi * fc); % RC time constant (s)
+    fc = 100e6;                     % Filter cutoff frequency (100 MHz)
+    RC = 1 / (2 * pi * fc);         % RC time constant (seconds)
+    tau_pulse = pulse_width;        % Duration of the ideal rectangular pulse (τ)
+    A = 1;                          % Normalized peak amplitude
     
-    % Local time vector for the pulse duration
-    t = linspace(0, pulse_width, M);
-    dt = t(2) - t(1); % Time step 
+    % Time vector: Covers both the charging (rise) and discharging (fall) phases.
+    % Although the physical pulse duration is tau_pulse, the RC tail extends 
+    % beyond it. We generate 2*M points to visualize the full waveform.
+    t_full = linspace(0, 2 * pulse_width, 2 * M);
     
-    % Define the ideal rectangular input: x(t) = 1 for 0 < t < T
+    % Reference: Ideal rectangular input for comparison
     rect_pulse = ones(1, M);
     
-    % Define the RC filter impulse response: h(t) = (1/RC) * exp(-t/RC)
-    h = (1 / RC) * exp(- t / RC);
+    % Initialize the full waveform vector
+    window_full = zeros(1, 2 * M);
     
-    % Obtain the realistic pulse shape via convolution. Multiplying by dt 
-    % scales the discrete sum to a physical integral.
-    window_conv = conv(rect_pulse, h) * dt;
+    % Apply the step-response equations for an RC circuit
+    for k = 1:2*M
+        tk = t_full(k);
+        if tk <= 0
+            window_full(k) = 0;
+        elseif tk < tau_pulse
+            % Rising Edge (Charging Phase): 0 < t < τ
+            % Equation: V(t) = A * (1 - exp(-t/RC))
+            window_full(k) = A * (1 - exp(-tk / RC));
+        else
+            % Falling Edge (Discharging Phase): t > τ
+            % The decay starts from the amplitude reached at the end of the pulse.
+            % Equation: V(t) = V(tau) * exp(-(t - τ)/RC)
+            window_full(k) = A * (1 - exp(-tau_pulse / RC)) * exp(-(tk - tau_pulse) / RC);
+        end
+    end
     
-    % We keep the first M points to represent the pulse during the "on" state.
-    window = window_conv(1:M);
+    % The 'window' used for the backscatter convolution represents the pulse 
+    % within the sampling window M. 
+    window = window_full(1:M);
     
-    % Normalize the amplitude to 1 to maintain consistency in backscatter intensity
-    window = window / max(window);
+    % Normalize the window to ensure peak power is consistent across models
+    window = window / max(window);  
+
+    % ---- VISUAL VERIFICATION (RC PULSE MODEL) ----
+    % figure('Name', 'RC Pulse Shape Analysis');
+    figure('Name', 'Pulse Shape')
+    
+    % Time vector for display purposes only (covering twice the pulse width)
+    t_plot = linspace(0, 2 * pulse_width * 1e9, 2 * M);  % Time in ns
+    t_window_ns = linspace(0, pulse_width * 1e9, M);    % Time in ns for the active window
+    
+    
+    % Shows the full charging/discharging cycle of the RC filter
+    plot(t_plot, window_full, 'Color', [0.1 0.2 0.8], 'LineWidth', 2, ...
+     'DisplayName', 'RC Pulse Shapping');
+    hold on;
+    plot(t_window_ns, ones(1,M), 'r--', 'LineWidth', 1.5, 'DisplayName', ...
+        'Ideal Rectangular Pulse');
+    hold off;
+
+    xlabel('Time (ns)'); ylabel('Amplitude');
+    title('RC Pulse Shapping (fc = 100 MHz)');
+    legend('Location', 'northeast');
+    ylim([0 1.2]); grid on;
+    
 elseif shape_choice == 2
     % ----- 4.1.b REALISTIC PULSE SHAPING (SUPER-GAUSSIAN MODEL) -----
-    % The Super-Gaussian models pulses with smooth transitions and a flat top.
+    % The Super-Gaussian function is used to model pulses that have a 
+    % smoother transition than a hard rectangular pulse but can maintain 
+    % a "flat-top" characteristic depending on the order (N).
     
-    order_N = 1; % Order (N=1: Gaussian; N=3-5: Realistic Square)
+    % Pulse Order (N):
+    % N = 1 results in a standard Gaussian shape.
+    % N > 3 approaches a rectangular "flat-top" pulse with realistic edges.
+    order_N = 3; 
     
-    % Corrected Time Vector: centered at zero spanning the pulse width
-    t = linspace(-pulse_width/2, pulse_width/2, M);
+    % Time Vector: Centered at zero to satisfy the Super-Gaussian symmetry.
+    % It spans the full pulse duration defined by 'pulse_width'.
+    t = linspace(-pulse_width, pulse_width, M);
    
-    % Generate the Super-Gaussian window
-    % y = sgauss(t,Tfwhm,E,C,m);
-    % PARAMETERS
-    % t         time 
-    % Tfwhm     full-width at half maximum of the pulse power (default = 1)
-    % E         pulse energy (default = 1)
-    % C         chirp parameter (default = 0 for unchirped pulse)
-    % m         pulse order (sharpness) (default = 1 for Gaussian shape)
-    % Parameters: sguass(time, pulse width, order)
+    % Generate the Super-Gaussian window using the sgauss function.
+    % Parameters: (time, FWHM width, Energy, Chirp, Order)
+    % Here, Tfwhm is set to pulse_width to define the effective spatial cell.
     window = sgauss(t, pulse_width, 1, 0, order_N);
     
-    % Normalize to ensure peak power is 1
+    % Normalization: Ensures the peak power is 1.0 to maintain 
+    % consistency in the backscattered signal intensity across different models.
     window = window / max(window);
     
-    % Re-create a standard rect_pulse of the same length for comparison plots
+    % Reference: Create a standard rectangular pulse for visual comparison.
     rect_pulse = ones(1, M); 
+
+    % ---- VISUAL VERIFICATION (SUPER-GAUSSIAN SHAPE) ----
+    figure('Name', 'Pulse Shape')
+    
+    % Time vector in nanoseconds for plotting
+    t_ns = t * 1e9;
+    
+    plot(t_ns, window, ...
+        'Color', [0.2 0.2 0.8], 'LineWidth', 2, ...
+        'DisplayName', ['Super-Gaussian (N=' num2str(order_N) ')']);
+    hold on;
+    plot(t_ns, rect_pulse, 'r--', 'LineWidth', 1.5, ...
+         'DisplayName', 'Ideal Rectangular Pulse');
+    hold off;
+    title('Super Gaussian Model Pulse Shapping');
+    xlabel('Relative Time (ns)'); ylabel('Normalized Amplitude');
+    legend('Location', 'northeast');
+    ylim([0 1.2]); 
+    grid on;
 end
 
-%% ----- 5. COHERENT BACKSCATTER INTEGRATION & NOISE MODELING -----
-%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ========================================================================
+% 5. COHERENT BACKSCATTER INTEGRATION & NOISE MODELING
+% ========================================================================
 %   This loop simulates the frequency-dependent backscattered field. For 
 % each frequency step, the total electric field is calculated by integrating 
 % the contributions of all scattering centers within the pulse volume.
@@ -292,9 +360,9 @@ end
 % phase uncertainty accumulates with time (and thus distance).
 % - Receiver Noise: Combines thermal and shot noise, and it's added as
 % complex additive white Guassian noise to the field
-%%%%%%%%%%%%%%%%%%%%%%%%%
+
 z_valid = z(1 : (Nz - M + 1));
-tau = 2 * n_ave * z_valid / c;
+t_laser = (0:Nz-M) * (2 * n_ave * dz / c);  % passo = round-trip time por célula
 
 for f_idx = 1:Nf
     current_nu = f(f_idx);
@@ -331,7 +399,7 @@ for f_idx = 1:Nf
 
     % --- 5.3 Laser Phase Noise (Transmitter Impairment) ---
     % Phase noise variance increases linearly with the round-trip delay (tau) 
-    E_laser = lasercw(tau, 10, 0, linewidth, shift);
+    E_laser = lasercw(t_laser, 10, 0, linewidth, shift);
 
     % --- 5.4 Fiber Loss (Beer-Lambert Law) ---
     % As the light travels to distance 'z' and back to the detector (round-trip),
@@ -361,12 +429,13 @@ for f_idx = 1:Nf
 
 end
 
-%% ----- 6. SPECTRAL SHIFT ESTIMATION VIA CROSS-CORRELATION -----
-%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ========================================================================
+% 6. SPECTRAL SHIFT ESTIMATION VIA CROSS-CORRELATION 
+% ========================================================================
 %   Following the methodology described in the paper, we perform a local 
 % cross-correlation between the reference and perturbed Rayleigh backscatter 
 % intensity spectra to quantify the environmental impact.
-%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 % Define the frequency lag axis for correlation mapping
 lags_freq = (-(Nf-1):(Nf-1)) * delta_f; 
@@ -394,36 +463,43 @@ for k = 1:Nz-M+1
     freq_shift(k) = lags(max_idx) * delta_f; 
 end
 
-%% ----- 7. DATA VISUALIZATION & SENSOR PERFORMANCE ANALYSIS -----
-%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%% ========================================================================
+%  7. DATA VISUALIZATION & SENSOR PERFORMANCE ANALYSIS -----
+% ========================================================================
 %   This section visualizes the mapping between the physical perturbation and 
 % the recovered frequency shifts, simulating the output of a distributed 
 % fiber sensing interrogation system.
-%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 % --- FIGURE 1: 1D Frequency Shift Profile ---
 % This plot represents the demodulated sensing signal.
 % The peaks should align with the 'start_idx' and 'end_idx' defined in Section 3.
-figure(1)
-plot(z(1:Nz-M+1), freq_shift / 1e6, 'LineWidth', 1.5)
-grid on; ylabel('Frequency Shift (MHz)'); xlabel('Distance (m)');
-title('Detected Frequency Shift along the Fiber');
+
+% figure('Name', 'Freq Shift Profile');
+% plot(z(1:Nz-M+1), freq_shift / 1e6, 'LineWidth', 1.5)
+% grid on; ylabel('Frequency Shift (MHz)'); xlabel('Distance (m)');
+% title('Detected Frequency Shift along the Fiber');
+
 
 %%
 % --- FIGURE 2: 3D Correlation Surface ---
 % Provides a global view of the cross-correlation peaks. 
 % High correlation (close to 1.0) indicates high similarity between 
 % the reference and signal Rayleigh spectra at the shifted frequency.
-figure(2)
-[Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
-surf(Z_mesh, F_mesh, corr_map, 'EdgeColor', 'none')
-view(35, 45); colormap('jet'); colorbar;
-xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
-title('3D Cross-Correlation Map');
-rotate3d on;
-xlim([max(210, first_event - 10) min(L, last_event + 10)]);  % Fiber length
-ylim([-250 250]); % Frequency shift window
-zlim([-0.5 1]); % Correlation magnitude scale
+
+% figure('Name', '3D CC (reduced)');
+% [Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
+% surf(Z_mesh, F_mesh, corr_map, 'EdgeColor', 'none')
+% view(35, 45); colormap('jet'); colorbar;
+% xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
+% title('3D Cross-Correlation Map');
+% rotate3d on;
+% xlim([max(210, first_event - 10) min(L, last_event + 10)]);  % Fiber length
+% ylim([-250 250]); % Frequency shift window
+% zlim([-0.5 1]); % Correlation magnitude scale
+
 
 %%
 % --- FIGURE 3: 2D Contour Map with Peak Tracking ---
@@ -431,7 +507,7 @@ zlim([-0.5 1]); % Correlation magnitude scale
 % mathematical peak detection (white line).
 % This visualization is excellent for assessing the Signal-to-Noise Ratio (SNR).
 
-figure(3)
+figure('Name', '2D C. Peak Tracking');
 [Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
 contourf(Z_mesh, F_mesh, corr_map, 20, 'LineColor', 'none'); 
 colormap('jet'); colorbar;
@@ -445,10 +521,11 @@ title('2D Correlation Map (Top View with Peak Trace)');
 xlim([max(0, first_event - 50) min(L, last_event + 50)]); 
 ylim([-250 250]);
 
+
 %%
 % --- FIGURE 4: Summary Overview ---
 % Combined plot for comparative analysis of spatial and spectral data.
-figure(4)
+figure('Name', 'Overview');
 subplot(2,1,1)
 plot(z(1:Nz-M+1), freq_shift / 1e6, 'LineWidth', 1.5)
 grid on; ylabel('Frequency Shift (MHz)'); xlabel('Distance (m)');
@@ -466,64 +543,34 @@ xlim([0 L]); % Full fiber length
 ylim([-250 250]); % Frequency shift window
 zlim([-0.5 1]); % Correlation magnitude scale
 
-%% ----- 8. ATTENUATION IMPACT ANALYSIS -----
+
+%%
+% --- FIGURE 5: ATTENUATION IMPACT ANALYSIS -----
+
+P_ideal_mean = mean(abs(E_ref_id).^2, 1);
+P_noisy_mean = mean(abs(E_ref).^2,    1);
 
 % Normalizing electric field
 % Calculates the scaling factor to map dimensionless simulated fields to 
 % physical mW. Using mean of the first point to stabilize against coherent 
 % fading (speckle).
-scale_factor = P_input_mW / mean(abs(E_ref_id(1,:))).^2;
+scale_factor = P_input_mW / max(P_ideal_mean);
 
 % Select the first frequency from the sweep for visualization
-P_ref_ideal = abs(E_ref_id(1, :)).^2 * scale_factor;
-P_ref_loss = abs(E_ref(1, :)).^2 * scale_factor;
+P_ref_ideal = P_ideal_mean * scale_factor;
+P_ref_loss  = P_noisy_mean * scale_factor;
 
 % Comparing the backscattered intensity with and without fiber loss
-figure (5);
-z_axis = z(1:length(P_ref_loss));
-
-% % Subplot 1: Linear Scale
-% subplot(2,1,1);
-% plot(z_axis, P_ref_ideal, 'b', 'DisplayName', 'Ideal (No Loss)');
-% hold on;
-% plot(z_axis, P_ref_loss, 'r', 'DisplayName', ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
-% hold off;
-% title('Backscattered Intensity (Linear Scale)'); 
-% xlabel('Distance (m)'); ylabel('Power (mW)'); legend('Location', 'northeast'); grid on;
+figure('Name', 'Attenuation Impact');
 
 % Subplot 2: Logarithmic Scale (OTDR Trace)
-% subplot(2,1,2);
-plot(z_axis, 10*log10(P_ref_ideal + eps), 'b', 'DisplayName', 'Ideal (No Loss)');
+plot(z_valid, 10*log10(P_ref_ideal + eps), 'b', 'DisplayName', 'Ideal (No Loss)');
 hold on;
-plot(z_axis, 10*log10(P_ref_loss + eps), 'r', 'DisplayName', ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
+plot(z_valid, 10*log10(P_ref_loss + eps), 'r', 'DisplayName', ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
 hold off;
 title('Backscattered Intensity (Logarithmic Scale)'); 
-ylabel('Power (dBm)'); xlabel('Distance (m)'); grid on;  legend('Location', 'northeast');
-
-%% ----- 9 COMPARISON: IDEAL VS. SUPER-GAUSSIAN OR RC-FILTER -----
-figure(6);
-t_rel = linspace(0, pulse_width * 1e9, M);
-if shape_choice == 1
-    plot(t_rel, window, 'b', 'LineWidth', 2, 'DisplayName', 'RC-Filtered Pulse');
-    hold on;
-    plot(t_rel, rect_pulse, '--r', 'LineWidth', 1.5, 'DisplayName', 'Ideal Rectangular Pulse');
-    hold off;
-    grid on;
-    xlabel('Time (ns)'); ylabel('Normalized Amplitude'); title('Pulse Shape Comparison');
-    legend('Location', 'best');
-    ylim([-0.1 1.2]);
-else
-    plot(t_rel, window, 'b', 'LineWidth', 2, 'DisplayName', 'Super Gaussian Pulse');
-    hold on;
-    plot(t_rel, rect_pulse, '--r', 'LineWidth', 1.5, 'DisplayName', 'Ideal Rectangular Pulse');
-    hold off;
-    grid on;
-    xlabel('Time (ns)'); ylabel('Normalized Amplitude'); title('Pulse Shape Comparison');
-    legend('Location', 'best');
-    ylim([-0.1 1.2]);
-end
+ylabel('Power (dBm)'); xlabel('Distance (m)'); grid on;  legend('Location', 'southeast');
 
 %%
-
 fprintf('\n--- Simulation successfully completed! ---\n');
 
