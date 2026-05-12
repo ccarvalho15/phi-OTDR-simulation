@@ -135,71 +135,38 @@ end
 
 delta_n_pert = zeros(1, Nz);
 
-% --- MAGNITUDE TRADE-OFF (delta_n vs. Correlation Bandwidth) ---
-%   The speckle pattern generates a correlation peak with a finite bandwidth
-% (FWHM).
-%   For a pulse width of 10 ns (d ~ 1.03 m), the bandwidth is approximately:
-% FWHM = c / (2 * n_ave * d) ~= 100 MHz.
-%
-% Option A (Realistic): delta_n = 1e-7 -> Shift ~= 19 MHz.
-% The shift occurs *within* the correlation peak width, appearing as a slight 
-% deformation in the 3D surface plot.
-%
-% Option B (Visual): delta_n > 7.5e-7 -> Shift > 100 MHz.
-% The shift moves the peak *outside* the original bandwidth, making the 
-% sensing event visually distinct in the 'surf' and 'contour' maps.
+magnitudes = [1e-7; -3e-7; 2e-7; 5e-7; -4e-7];
 
-% --- INTERACTIVE MAGNITUDE SELECTION (CONSOLE) ---
-fprintf('\nSelection of Perturbation Magnitude:         1) Realistic (Micro-events)        2) Visual (Distinct Peaks)\n');
-user_choice = input('> Option ');
-
-if isempty(user_choice) || user_choice == 1
-    min_mag = 1e-7; 
-    max_mag = 5e-7;
-elseif user_choice == 2
-    min_mag = 5e-7; 
-    max_mag = 1e-6;
-else
-    min_mag = 1e-7; 
-    max_mag = 5e-7;
-    fprintf('Invalid input. Defaulting to Realistic Micro-events.\n');
-end 
-
-% Check if defined events fit within total fiber length L
-total = (num_events * pert_length) + ((num_events - 1) * spacing);
-if total > 30
-    error(['Event configuration exceeds the allocated 30m sensing zone. Your ' ...
-        'current setup needs %.2f m.'], total);
-end
-
-% Randomized placement of the event sequence along the fiber
-random_start = sensing_zone + (30 - total) * rand();
-first_event = random_start;
-last_event = random_start + total;
+first_event = sensing_zone; 
+last_event  = sensing_zone + (num_events-1)*(pert_length + spacing) + pert_length;
 
 fprintf('\n--- Perturbation Events ---\n');
+fprintf('\n%-8s | %-18s | %-12s | %-12s\n', 'Event', 'Location (m)', 'Delta_n', 'Shift (MHz)');
+fprintf('%s\n', repmat('-', 1, 60));
+
 for i = 1:num_events
+    start_pos = 2 + sensing_zone + (i-1) * (pert_length + spacing);
+    end_pos = start_pos + pert_length;
+    mag = magnitudes(i);
+
+    shift_MHz = (nu0 * mag / n_ave) / 1e6;
+
     % Mapping physical coordinates to vector indices
-    start_idx = max(1, round(random_start/dz));
-    end_idx = min(Nz, start_idx + round(pert_length/dz));
-
-    random_end = random_start + pert_length;
-
-    % Assign random magnitude and sign to simulate tensile or compressive stress
-    random_mag = (min_mag + (max_mag - min_mag) * rand()) * sign(rand - 0.5);
+    start_idx = max(1, round(start_pos / dz));
+    end_idx = min(Nz, round(end_pos / dz));
 
     % Update the perturbation profile: delta_n(z)
-    delta_n_pert(start_idx:end_idx) = random_mag;
+    delta_n_pert(start_idx:end_idx) = mag;
 
-    fprintf('Event %d :: Location: [%.2f; %.2f] m | Delta_n: %.2e\n', ...
-        i, random_start, random_end, random_mag);
+    loc_str = sprintf('[%.2f; %.2f]', start_pos, end_pos);
+    fprintf('Event %-2d | %-18s | %-12.2e | %-12.2f\n', ...
+        i, loc_str, mag, shift_MHz);
 
-    % Increment position for the next event based on defined spacing
-    random_start = random_start + pert_length + spacing;
 end
 
 % Final perturbed refractive index profile used for backscatter calculation
 n_pert = n + delta_n_pert;
+fprintf('%s\n', repmat('-', 1, 60));
 
 %% ========================================================================
 % 4. PROBE SIGNAL & FREQUENCY SWEEP PARAMETERS 
@@ -280,8 +247,8 @@ if shape_choice == 1
     window = window / max(window);  
 
     % ---- VISUAL VERIFICATION (RC PULSE MODEL) ----
-    % figure('Name', 'RC Pulse Shape Analysis');
-    figure('Name', 'Pulse Shape')
+    figure(1)
+    set(gcf, 'Name', 'Pulse Shape')
     
     % Time vector for display purposes only (covering twice the pulse width)
     t_plot = linspace(0, 2 * pulse_width * 1e9, 2 * M);  % Time in ns
@@ -329,7 +296,8 @@ elseif shape_choice == 2
     rect_pulse = ones(1, M); 
 
     % ---- VISUAL VERIFICATION (SUPER-GAUSSIAN SHAPE) ----
-    figure('Name', 'Pulse Shape')
+    figure(1)
+    set(gcf, 'Name', 'Pulse Shape')
     
     % Time vector in nanoseconds for plotting
     t_ns = t * 1e9;
@@ -477,10 +445,11 @@ end
 % This plot represents the demodulated sensing signal.
 % The peaks should align with the 'start_idx' and 'end_idx' defined in Section 3.
 
-% figure('Name', 'Freq Shift Profile');
-% plot(z(1:Nz-M+1), freq_shift / 1e6, 'LineWidth', 1.5)
-% grid on; ylabel('Frequency Shift (MHz)'); xlabel('Distance (m)');
-% title('Detected Frequency Shift along the Fiber');
+figure(2)
+set(gcf,  'Name', 'Freq Shift Profile');
+plot(z(1:Nz-M+1), freq_shift / 1e6, 'LineWidth', 1.5)
+grid on; ylabel('Frequency Shift (MHz)'); xlabel('Distance (m)');
+title('Detected Frequency Shift along the Fiber');
 
 
 %%
@@ -489,16 +458,17 @@ end
 % High correlation (close to 1.0) indicates high similarity between 
 % the reference and signal Rayleigh spectra at the shifted frequency.
 
-% figure('Name', '3D CC (reduced)');
-% [Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
-% surf(Z_mesh, F_mesh, corr_map, 'EdgeColor', 'none')
-% view(35, 45); colormap('jet'); colorbar;
-% xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
-% title('3D Cross-Correlation Map');
-% rotate3d on;
-% xlim([max(210, first_event - 10) min(L, last_event + 10)]);  % Fiber length
-% ylim([-250 250]); % Frequency shift window
-% zlim([-0.5 1]); % Correlation magnitude scale
+figure(3)
+set(gcf,  'Name', '3D CC (reduced)');
+[Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
+surf(Z_mesh, F_mesh, corr_map, 'EdgeColor', 'none')
+view(35, 45); colormap('jet'); colorbar;
+xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
+title('3D Cross-Correlation Map');
+rotate3d on;
+xlim([max(210, first_event - 10) min(L, last_event + 10)]);  % Fiber length
+ylim([-250 250]); % Frequency shift window
+zlim([-0.5 1]); % Correlation magnitude scale
 
 
 %%
@@ -507,7 +477,8 @@ end
 % mathematical peak detection (white line).
 % This visualization is excellent for assessing the Signal-to-Noise Ratio (SNR).
 
-figure('Name', '2D C. Peak Tracking');
+figure(4)
+set(gcf, 'Name', '2D C. Peak Tracking'); 
 [Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
 contourf(Z_mesh, F_mesh, corr_map, 20, 'LineColor', 'none'); 
 colormap('jet'); colorbar;
@@ -525,7 +496,8 @@ ylim([-250 250]);
 %%
 % --- FIGURE 4: Summary Overview ---
 % Combined plot for comparative analysis of spatial and spectral data.
-figure('Name', 'Overview');
+figure(5)
+set(gcf, 'Name', 'Overview');
 subplot(2,1,1)
 plot(z(1:Nz-M+1), freq_shift / 1e6, 'LineWidth', 1.5)
 grid on; ylabel('Frequency Shift (MHz)'); xlabel('Distance (m)');
@@ -561,7 +533,8 @@ P_ref_ideal = P_ideal_mean * scale_factor;
 P_ref_loss  = P_noisy_mean * scale_factor;
 
 % Comparing the backscattered intensity with and without fiber loss
-figure('Name', 'Attenuation Impact');
+figure(6)
+set(gcf, 'Name', 'Attenuation Impact');
 
 % Subplot 2: Logarithmic Scale (OTDR Trace)
 plot(z_valid, 10*log10(P_ref_ideal + eps), 'b', 'DisplayName', 'Ideal (No Loss)');
@@ -571,6 +544,8 @@ hold off;
 title('Backscattered Intensity (Logarithmic Scale)'); 
 ylabel('Power (dBm)'); xlabel('Distance (m)'); grid on;  legend('Location', 'southeast');
 
+
 %%
+
 fprintf('\n--- Simulation successfully completed! ---\n');
 
