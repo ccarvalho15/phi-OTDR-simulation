@@ -1,5 +1,4 @@
 clear; clc; close all
-addpath('src');
 addpath('functions\')
 %% ========================================================================
 % 1. SYSTEM CONFIGURATION & WAVEGUIDE PROPERTIES
@@ -86,7 +85,7 @@ trhd_mult = 4.5; % Detection threshold (typical scaling multiplier: 3 to 6)
 % Print system initialization parameters to the command window
 fprintf(' ==== PHI-OTDR SIMULATION CONFIGURATION ==== \n');
 fprintf([ ...
-    'Fiber Length (L):                      %d m                  Input Power:                         %d mW (%.1f dBm)          Threshold Multiplier:      %dx\n' ...
+    'Fiber Length (L):                      %d m                  Input Power:                         %d mW (%.1f dBm)          Threshold Multiplier:      %.2fx\n' ...
     'Spatial Resolution (d):                %.2f m                 Sweep Range:                         %d MHz\n' ...
     'Total Spatial Points (Nz)              %d                   Frequency step (Δf):                 %d MHz\n' ...
     'Number of Scattering Segments (M):     %d                     Number of frequencies (Nf):          %d\n' ...
@@ -139,7 +138,7 @@ end
 % coefficient (dn/dT). (For Silica glass: dn/dT is approximately 1.1e-5 K^-1)
 
 delta_n_pert = zeros(1, Nz); % Initialize perturbation index array with zeros
-magnitudes = [0.25e-7; -3e-7; 2e-7; 5e-7; -4e-7]; % Unique refractive index change magnitudes for each event
+magnitudes = [1e-7; -3e-7; 2e-7; 5e-7; -4e-7]; % Unique refractive index change magnitudes for each event
 
 first_event = sensing_zone; 
 last_event  = sensing_zone + (num_events-1)*(pert_length + spacing) + pert_length;
@@ -498,7 +497,7 @@ all_pks  = [pks_pos,  pks_neg];
 [all_locs, sort_idx] = sort(all_locs); % Sort events sequentially by spatial position
 all_pks = all_pks(sort_idx);
 
-%%
+%% REPORT
 report(theor_starts, theor_ends, theor_shifts, theor_delta_n, ...
                       all_locs, all_pks, z_valid, smooth_freq_shift, ...
                       threshold, n_ave, nu0);
