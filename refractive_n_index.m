@@ -51,7 +51,7 @@ M = round(d / dz);                  % Number of scattering segments
 
 % --- 1.6 PHASE & AMPLITUDE NOISE ---
 linewidth = 100e3;     % Laser linewidth (100 kHz)
-SNR_dB = 20;           % System Signal-to-Noise Ratio (dB)
+SNR_dB = 15;           % System Signal-to-Noise Ratio (dB)
 sigma_n = 2e-6;        % Standard deviation of index fluctuations 
 
 %   Laser linewidth: a narrower linewidth (e.g., 1 kHz) would increase 
@@ -79,20 +79,24 @@ spacing = 4;            % Spatial separation between events (m)
 sensing_zone = L - 30;  % Defining the sensing zone starting point (e.g., 
                         % L-30 meters)
 
+% --- 1.9 DETECTION
+trhd_mult = 4.5; % Detection threshold (typical scaling multiplier: 3 to 6)
+
+% Print system initialization parameters to the command window
 fprintf(' ==== PHI-OTDR SIMULATION CONFIGURATION ==== \n');
 fprintf([ ...
-    'Fiber Length (L):                      %d m                           Input Power:                           %d mW (%.1f dBm)\n' ...
-    'Spatial Resolution (d):                %.2f m                          Sweep Range:                           %d MHz\n' ...
-    'Total Spatial Points (Nz)              %d                            Frequency step (Δf):                   %d MHz\n' ...
-    'Number of Scattering Segments (M):     %d                              Number of frequencies (Nf):            %d\n' ...
-    'Sampling Interval (dz):                %.3f m                         Laser Linewidth (Δν):                  %.1f kHz\n' ...                   
-    'Attenuation:                           %.2f dB/km                      System SNR:                            %d dB\n' ...
-    'Attenuation Coefficient (α):           %.4e m^-1                 Index standard deviation (σ_n):        %.1e\n' ...
-    'Average Refractive Index (n_ave):      %.3f                           Number of Events:                      %d\n' ...
-    'Operating Wavelength (lambda_0):       %d nm                         Width of each event:                   %.2f m\n'...
-    'Central frequency (nu_0)               %.4e Hz                   Separation between events:             %.2f m\n'...
-    'Pulse Width:                           %d ns                           Sensing Zone Start:                    %d m\n'], ...
-    L, P_input_mW, P_input_dBm, d, freq_range/1e6, Nz, delta_f/1e6, M, Nf, ...
+    'Fiber Length (L):                      %d m                  Input Power:                         %d mW (%.1f dBm)          Threshold Multiplier:      %dx\n' ...
+    'Spatial Resolution (d):                %.2f m                 Sweep Range:                         %d MHz\n' ...
+    'Total Spatial Points (Nz)              %d                   Frequency step (Δf):                 %d MHz\n' ...
+    'Number of Scattering Segments (M):     %d                     Number of frequencies (Nf):          %d\n' ...
+    'Sampling Interval (dz):                %.3f m                Laser Linewidth (Δν):                %.1f kHz\n' ...                   
+    'Attenuation:                           %.2f dB/km             System SNR:                          %d dB\n' ...
+    'Attenuation Coefficient (α):           %.4e m^-1        Index standard deviation (σ_n):      %.1e\n' ...
+    'Average Refractive Index (n_ave):      %.3f                  Number of Events:                    %d\n' ...
+    'Operating Wavelength (lambda_0):       %d nm                Width of each event:                 %.2f m\n'...
+    'Central frequency (nu_0)               %.4e Hz          Separation between events:           %.2f m\n'...
+    'Pulse Width:                           %d ns                  Sensing Zone Start:                  %d m\n'], ...
+    L, P_input_mW, P_input_dBm, trhd_mult, d, freq_range/1e6, Nz, delta_f/1e6, M, Nf, ...
     dz, linewidth/1e3, attenuation, SNR_dB, alpha, sigma_n, n_ave, num_events, ...
     lambda0*1e9, pert_length, nu0, spacing, pulse_width*1e9, sensing_zone);
 
@@ -127,46 +131,61 @@ end
 %% ========================================================================
 % 3. MODELING OF ENVIRONMENTAL SENSING EVENTS (STRAIN/TEMP)
 % ========================================================================
-%   Following the approach of Lu & Thomas, environmental perturbations 
-% (e.g., strain or temperature) are modeled as localized modulations of the 
-% refractive index profile.
-%   Based on Lu & Thomas, temperature changes modulate the phase via dn/dT.
-% For Silica: dn/dT approx. 1.1e-5 
+%   Localized environmental perturbations (such as physical strain or 
+% temperature changes) are modeled as localized modulations applied to the 
+% fiber's refractive index profile.
+%   Temperature variations shift the phase response via the thermo-optic 
+% coefficient (dn/dT). (For Silica glass: dn/dT is approximately 1.1e-5 K^-1)
 
-delta_n_pert = zeros(1, Nz);
-
-magnitudes = [1e-7; -3e-7; 2e-7; 5e-7; -4e-7];
+delta_n_pert = zeros(1, Nz); % Initialize perturbation index array with zeros
+magnitudes = [0.25e-7; -3e-7; 2e-7; 5e-7; -4e-7]; % Unique refractive index change magnitudes for each event
 
 first_event = sensing_zone; 
 last_event  = sensing_zone + (num_events-1)*(pert_length + spacing) + pert_length;
 
-fprintf('\n--- Perturbation Events ---\n');
-fprintf('\n%-8s | %-18s | %-12s | %-12s\n', 'Event', 'Location (m)', 'Delta_n', 'Shift (MHz)');
-fprintf('%s\n', repmat('-', 1, 60));
+% -- Array to store theorical date
+theor_starts = zeros(1, num_events);
+theor_ends = zeros(1, num_events);
+theor_shifts = zeros(1, num_events);
+theor_delta_n = zeros(1, num_events);
+
+
+fprintf('\n=================================================================\n');
+fprintf('                   PERTURBATION EVENTS - PHI-OTDR                 \n');
+fprintf('=================================================================\n');
+% Cabeçalho com larguras fixas: 10, 15, 15, 15
+fprintf('%-8s | %-17s | %-18s | %-15s\n', 'Event', 'Location (m)','Freq. Shift (MHz)','Delta_n');
+fprintf('%s\n', repmat('-', 1, 65));
 
 for i = 1:num_events
+    % Determine the actual physical start and stop coordinates of the current event
     start_pos = 2 + sensing_zone + (i-1) * (pert_length + spacing);
     end_pos = start_pos + pert_length;
     mag = magnitudes(i);
 
+    % Convert the refractive index modification to its equivalent cross-correlation frequency shift
     shift_MHz = (nu0 * mag / n_ave) / 1e6;
 
-    % Mapping physical coordinates to vector indices
+    % Map physical meter positions to discrete vector indices on the grid
     start_idx = max(1, round(start_pos / dz));
     end_idx = min(Nz, round(end_pos / dz));
 
-    % Update the perturbation profile: delta_n(z)
+    % Update the localized perturbation profile vector: delta_n(z)
     delta_n_pert(start_idx:end_idx) = mag;
 
     loc_str = sprintf('[%.2f; %.2f]', start_pos, end_pos);
-    fprintf('Event %-2d | %-18s | %-12.2e | %-12.2f\n', ...
-        i, loc_str, mag, shift_MHz);
+    fprintf('Event %-2d | %-17s | %+-18.2f | %+-12.2e\n', ...
+        i, loc_str, shift_MHz, mag);
 
+    theor_starts(i) = start_pos;
+    theor_ends(i) = end_pos;
+    theor_shifts(i) = shift_MHz;
+    theor_delta_n(i) = mag;
 end
 
-% Final perturbed refractive index profile used for backscatter calculation
+% Combine baseline index profile with the external perturbation profile
 n_pert = n + delta_n_pert;
-fprintf('%s\n', repmat('-', 1, 60));
+fprintf('%s\n', repmat('-', 1, 65));
 
 %% ========================================================================
 % 4. PROBE SIGNAL & FREQUENCY SWEEP PARAMETERS 
@@ -181,14 +200,14 @@ fprintf('%s\n', repmat('-', 1, 60));
 % - Columns represent spatial positions (traces)
 % The length is Nz-M+1 because the pulse integration window 'M' reduces the 
 % valid range.
-E_ref = zeros(Nf, Nz-M+1);
-E_sig = zeros(Nf, Nz-M+1);
+E_ref = zeros(Nf, Nz-M+1); % Reference state field with added noise
+E_sig = zeros(Nf, Nz-M+1); % Perturbed signal state field with added noise
 
-% To capture the ideal electric field
+% Pre-allocate matrices to preserve ideal (noise-free) electric fields
 E_ref_id = zeros(Nf, Nz-M+1); 
 E_sig_id = zeros(Nf, Nz-M+1); 
 
-% To analyze SNR between ideal signal and degraded signal
+% Pre-allocate matrices to evaluate raw fields before receiver thermal/shot noise impairments
 E_ref_raw_all = zeros(Nf, Nz-M+1);
 E_sig_raw_all = zeros(Nf, Nz-M+1);
 
@@ -329,12 +348,12 @@ end
 % - Receiver Noise: Combines thermal and shot noise, and it's added as
 % complex additive white Guassian noise to the field
 
-z_valid = z(1 : (Nz - M + 1));
-t_laser = (0:Nz-M) * (2 * n_ave * dz / c);  % passo = round-trip time por célula
+z_valid = z(1 : (Nz - M + 1));              % Trim valid spatial axis matrix to handle convolution boundaries
+t_laser = (0:Nz-M) * (2 * n_ave * dz / c);  % Compute physical round-trip arrival times for every cell
 
 for f_idx = 1:Nf
-    current_nu = f(f_idx);
-    shift = current_nu - nu0;
+    current_nu = f(f_idx);          % Current laser frequency value under interrogation
+    shift = current_nu - nu0;       % Deviation offset relative to the base central frequency
     
     % --- 5.1 Propagation Phase Calculation ---
     % beta: propagation constant
@@ -367,7 +386,7 @@ for f_idx = 1:Nf
 
     % --- 5.3 Laser Phase Noise (Transmitter Impairment) ---
     % Phase noise variance increases linearly with the round-trip delay (tau) 
-    E_laser = lasercw(t_laser, 10, 0, linewidth, shift);
+    E_laser = lasercw(t_laser, P_input_dBm, 0, linewidth, shift);
 
     % --- 5.4 Fiber Loss (Beer-Lambert Law) ---
     % As the light travels to distance 'z' and back to the detector (round-trip),
@@ -377,6 +396,7 @@ for f_idx = 1:Nf
     % over distance '2z' is exp(-(alpha/2) * 2z) = exp(-alpha * z).
     loss_factor = exp(-alpha * z_valid);
 
+    % Construct raw impaired fields combining scattering profiles, phase noise, and loss attenuation
     E_ref_raw = E_ref_conv .* E_laser .* loss_factor;
     E_sig_raw = E_sig_conv .* E_laser .* loss_factor;
 
@@ -387,11 +407,11 @@ for f_idx = 1:Nf
     E_ref(f_idx, :) = awgn(E_ref_raw, SNR_dB, 'measured');
     E_sig(f_idx, :) = awgn(E_sig_raw, SNR_dB, 'measured');
 
-    % Store ideal fields for performance benchmarking
+    % Preserve pure noise-free datasets for performance metrics
     E_ref_id(f_idx, :) = E_ref_conv;
     E_sig_id(f_idx, :) = E_sig_conv;
 
-    % Store no ideal fields for performance benchmarking
+    % Store raw fields before receiver noise stages for tracking analysis
     E_ref_raw_all(f_idx, :) = E_ref_raw;
     E_sig_raw_all(f_idx, :) = E_sig_raw;
 
@@ -431,9 +451,60 @@ for k = 1:Nz-M+1
     freq_shift(k) = lags(max_idx) * delta_f; 
 end
 
+%% ========================================================================
+% 7. PEAK DETECTION WITH NOISE SUPPRESSION
+% ========================================================================
+
+% --- 7.1 Signal Smoothing ---
+smooth_window = M; % Set smoothing window length equal to the number of cells inside the pulse envelope
+smooth_freq_shift = movmean(freq_shift, smooth_window);
+% movmean computes a moving average across adjacent spatial points. This filters out 
+% isolated high-frequency noise spikes without distorting broad real events.
+% Why avoid the raw signal? Running findpeaks on the raw trace generates 
+% hundreds of false positives from the random +/-10 MHz noise spikes.
+
+% --- 7.2 Background Noise Estimation ---
+% Compute the Median Absolute Deviation (MAD) to evaluate the typical noise floor dispersion. 
+% MAD is highly robust against strong outliers, meaning real signal peaks won't warp the noise estimate.
+noise_est = median(abs(smooth_freq_shift - median(smooth_freq_shift)));
+threshold = trhd_mult * noise_est;   % Detection threshold (typical scaling multiplier: 3 to 6)
+
+
+% --- 7.3 Isolating Positive and Negative Peaks Independently ---
+min_peak_distance = round(pert_length / dz);  % Enforce minimum separation distance between events
+
+% Parameter Breakdown:
+% - MinPeakHeight: Rejects all variations below the threshold floor (primary noise filter).
+% - MinPeakDistance: Ensures detected peaks are separated by at least one event width (1.5 m), 
+%   preventing a single wide event from being counted multiple times.
+% - MinPeakProminence: Measures peak height relative to the surrounding baseline, filtering 
+%   out ripple artifacts located on long signal slopes.
+[pks_pos, locs_pos] = findpeaks( smooth_freq_shift, z_valid, ...
+    'MinPeakHeight',    threshold, ...
+    'MinPeakDistance',  min_peak_distance * dz, ...
+    'MinPeakProminence', threshold * 0.3);
+
+[pks_neg, locs_neg] = findpeaks(-smooth_freq_shift, z_valid, ...
+    'MinPeakHeight',    threshold, ...
+    'MinPeakDistance',  min_peak_distance * dz, ...
+    'MinPeakProminence', threshold * 0.3);
+pks_neg = -pks_neg; % Invert negative peak amplitudes back to their true values
+
+
+% --- 7.4 Merge and Sort All Detected Events ---
+all_locs = [locs_pos, locs_neg];
+all_pks  = [pks_pos,  pks_neg];
+[all_locs, sort_idx] = sort(all_locs); % Sort events sequentially by spatial position
+all_pks = all_pks(sort_idx);
+
+%%
+report(theor_starts, theor_ends, theor_shifts, theor_delta_n, ...
+                      all_locs, all_pks, z_valid, smooth_freq_shift, ...
+                      threshold, n_ave, nu0);
+
 
 %% ========================================================================
-%  7. DATA VISUALIZATION & SENSOR PERFORMANCE ANALYSIS -----
+%  8. DATA VISUALIZATION & SENSOR PERFORMANCE ANALYSIS -----
 % ========================================================================
 %   This section visualizes the mapping between the physical perturbation and 
 % the recovered frequency shifts, simulating the output of a distributed 
@@ -536,15 +607,34 @@ figure(6)
 set(gcf, 'Name', 'Attenuation Impact');
 
 % Subplot 2: Logarithmic Scale (OTDR Trace)
-plot(z_valid, 10*log10(P_ref_ideal + eps), 'b', 'DisplayName', 'Ideal (No Loss)');
+plot(z_valid, 10*log10(P_ref_ideal + eps), 'b', 'DisplayName', ...
+    'Ideal (No Loss)');
 hold on;
-plot(z_valid, 10*log10(P_ref_loss + eps), 'r', 'DisplayName', ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
+plot(z_valid, 10*log10(P_ref_loss + eps), 'r', 'DisplayName', ...
+    ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
 hold off;
 title('Backscattered Intensity (Logarithmic Scale)'); 
 ylabel('Power (dBm)'); xlabel('Distance (m)'); grid on;  legend('Location', 'southeast');
 
+%%
+% --- FIGURE 7: Peak Detection Diagnostics ---
+% Visualizes raw versus smoothed frequency shifts alongside thresholds and 
+% positive/negative peak markers.
+figure(7);
+set(gcf, 'Name', 'Event Detection');
+plot(z_valid, freq_shift/1e6, 'Color', [0.4 0.4 0.4], 'DisplayName', 'Raw shift');
+hold on;
+plot(z_valid, smooth_freq_shift/1e6, 'Color', [0.2 0.6 1.0], 'LineWidth', 1.5, ...
+    'DisplayName', 'Smoothed shift');
+scatter(locs_pos, pks_pos/1e6, 80, 'g^', 'filled', 'DisplayName', 'Detected (+)');
+scatter(locs_neg, pks_neg/1e6, 80, 'rv', 'filled', 'DisplayName', 'Detected (−)');
+yline( threshold/1e6, 'g--', 'LineWidth', 1, 'DisplayName', '+Threshold');
+yline(-threshold/1e6, 'r--', 'LineWidth', 1, 'DisplayName', '−Threshold');
+hold off;
+xlabel('Distance (m)'); ylabel('Frequency Shift (MHz)');
+title('Peak Detection — φ-OTDR');
+legend('Location', 'northwest'); grid on;
 
 %%
 
 fprintf('\n--- Simulation successfully completed! ---\n');
-
