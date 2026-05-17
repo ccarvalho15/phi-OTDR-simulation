@@ -1,5 +1,6 @@
 clear; clc; close all
-
+addpath('src');
+addpath('functions\')
 %% ========================================================================
 % 1. SYSTEM CONFIGURATION & WAVEGUIDE PROPERTIES
 % ========================================================================
