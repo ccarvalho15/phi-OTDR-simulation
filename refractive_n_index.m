@@ -3,7 +3,7 @@ addpath('functions\')
 %% ========================================================================
 % 1. SYSTEM CONFIGURATION & WAVEGUIDE PROPERTIES
 % ========================================================================
-clc; 
+clc;
 %   The fiber is treated as a series of inhomogeneities with random refractive 
 % indices
 
@@ -80,13 +80,15 @@ sensing_zone = L - 30;  % Defining the sensing zone starting point (e.g.,
                         % L-30 meters)
 
 % --- 1.9 DETECTION
-trhd_mult = 4.5; % Detection threshold (typical scaling multiplier: 3 to 6)
+trhd_mult = 3.5;        % Noise floor scaling factor for peak verification
+match_tolerance = 2.0;  % Spatial validation radius to match experimental 
+                        % and theoretical peaks
 
 % Print system initialization parameters to the command window
 fprintf(' ==== PHI-OTDR SIMULATION CONFIGURATION ==== \n');
 fprintf([ ...
     'Fiber Length (L):                      %d m                  Input Power:                         %d mW (%.1f dBm)          Threshold Multiplier:      %.2fx\n' ...
-    'Spatial Resolution (d):                %.2f m                 Sweep Range:                         %d MHz\n' ...
+    'Spatial Resolution (d):                %.2f m                 Sweep Range:                         %d MHz                  Spatial Validation Radius  %.1f\n' ...
     'Total Spatial Points (Nz)              %d                   Frequency step (Δf):                 %d MHz\n' ...
     'Number of Scattering Segments (M):     %d                     Number of frequencies (Nf):          %d\n' ...
     'Sampling Interval (dz):                %.3f m                Laser Linewidth (Δν):                %.1f kHz\n' ...                   
@@ -96,7 +98,8 @@ fprintf([ ...
     'Operating Wavelength (lambda_0):       %d nm                Width of each event:                 %.2f m\n'...
     'Central frequency (nu_0)               %.4e Hz          Separation between events:           %.2f m\n'...
     'Pulse Width:                           %d ns                  Sensing Zone Start:                  %d m\n'], ...
-    L, P_input_mW, P_input_dBm, trhd_mult, d, freq_range/1e6, Nz, delta_f/1e6, M, Nf, ...
+    L, P_input_mW, P_input_dBm, trhd_mult, d, freq_range/1e6, match_tolerance, ...
+    Nz, delta_f/1e6, M, Nf, ...
     dz, linewidth/1e3, attenuation, SNR_dB, alpha, sigma_n, n_ave, num_events, ...
     lambda0*1e9, pert_length, nu0, spacing, pulse_width*1e9, sensing_zone);
 
@@ -138,24 +141,24 @@ end
 % coefficient (dn/dT). (For Silica glass: dn/dT is approximately 1.1e-5 K^-1)
 
 delta_n_pert = zeros(1, Nz); % Initialize perturbation index array with zeros
-magnitudes = [1e-7; -3e-7; 2e-7; 5e-7; -4e-7]; % Unique refractive index change magnitudes for each event
+magnitudes = [0.20e-7; -3.14e-7; 2.12e-7; 5.19e-7; -4.06e-7]; % Unique refractive index change magnitudes for each event
 
 first_event = sensing_zone; 
 last_event  = sensing_zone + (num_events-1)*(pert_length + spacing) + pert_length;
-
+assert(last_event <= L, 'ERROR: perturbation events exceed fiber length!');
 % -- Array to store theorical date
 theor_starts = zeros(1, num_events);
 theor_ends = zeros(1, num_events);
 theor_shifts = zeros(1, num_events);
 theor_delta_n = zeros(1, num_events);
 
-
-fprintf('\n=================================================================\n');
-fprintf('                   PERTURBATION EVENTS - PHI-OTDR                 \n');
-fprintf('=================================================================\n');
+fprintf('\n%s\n', repmat('=', 1, 60));
+fprintf('               PERTURBATION EVENTS - PHI-OTDR\n');
+fprintf('%s\n', repmat('=', 1, 60));
 % Cabeçalho com larguras fixas: 10, 15, 15, 15
-fprintf('%-8s | %-17s | %-18s | %-15s\n', 'Event', 'Location (m)','Freq. Shift (MHz)','Delta_n');
-fprintf('%s\n', repmat('-', 1, 65));
+fprintf('%-8s | %-16s | %-17s | %-15s\n', 'Event', 'Location (m)', ...
+    'Freq. Shift (MHz)','Delta_n');
+fprintf('%s\n', repmat('-', 1, 60));
 
 for i = 1:num_events
     % Determine the actual physical start and stop coordinates of the current event
@@ -174,7 +177,7 @@ for i = 1:num_events
     delta_n_pert(start_idx:end_idx) = mag;
 
     loc_str = sprintf('[%.2f; %.2f]', start_pos, end_pos);
-    fprintf('Event %-2d | %-17s | %+-18.2f | %+-12.2e\n', ...
+    fprintf('Event %-2d | %-16s | %+-17.2f | %+-12.2e\n', ...
         i, loc_str, shift_MHz, mag);
 
     theor_starts(i) = start_pos;
@@ -185,7 +188,7 @@ end
 
 % Combine baseline index profile with the external perturbation profile
 n_pert = n + delta_n_pert;
-fprintf('%s\n', repmat('-', 1, 65));
+fprintf('%s\n\n', repmat('-', 1, 60));
 
 %% ========================================================================
 % 4. PROBE SIGNAL & FREQUENCY SWEEP PARAMETERS 
@@ -497,14 +500,17 @@ all_pks  = [pks_pos,  pks_neg];
 [all_locs, sort_idx] = sort(all_locs); % Sort events sequentially by spatial position
 all_pks = all_pks(sort_idx);
 
-%% REPORT
+%% ========================================================================
+%  8. REPORT 
+% ========================================================================
+% Call the logging utility to output confusion matrices and calculate 
+% evaluation performance metrics
 report(theor_starts, theor_ends, theor_shifts, theor_delta_n, ...
                       all_locs, all_pks, z_valid, smooth_freq_shift, ...
-                      threshold, n_ave, nu0);
-
+                      threshold, n_ave, nu0, pert_length, match_tolerance);
 
 %% ========================================================================
-%  8. DATA VISUALIZATION & SENSOR PERFORMANCE ANALYSIS -----
+%  9. DATA VISUALIZATION & SENSOR PERFORMANCE ANALYSIS 
 % ========================================================================
 %   This section visualizes the mapping between the physical perturbation and 
 % the recovered frequency shifts, simulating the output of a distributed 
@@ -634,6 +640,7 @@ hold off;
 xlabel('Distance (m)'); ylabel('Frequency Shift (MHz)');
 title('Peak Detection — φ-OTDR');
 legend('Location', 'northwest'); grid on;
+xlim([0 240])
 
 %%
 
