@@ -136,7 +136,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
         end
     else
         fprintf(['No False Alarms (FP) detected outside the perturbation ' ...
-            '                zones.\n']);
+            'zones.\n']);
     end
     
     % Compute percentages for the confusion matrix parameters
@@ -319,7 +319,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
             fprintf('Event %-2d | %+-13.2f | %-12s | %-16s | %-14s\n', i, ...
                 theor_shifts(i), 'NOT DETECTED', 'N/A', 'N/A');
         else
-            fprintf('Event %-2d | %+-13.2f | %+-12.2f | %-+16.2f | %-+14.2f\n', ...
+            fprintf('Event %-2d | %+-13.2f | %+-12.2f | %-16.2f | %-14.2f\n', ...
                 i, theor_shifts(i), shift_MHz_exp(i), err_shift_abs(i), ...
                 err_shift_rel(i));
         end
@@ -340,7 +340,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
             fprintf('Event %-2d | %+-10.2e | %-12s | %-11s | %-14s\n', i, ...
                 theor_delta_n(i), 'NOT DETECTED', 'N/A', 'N/A');
         else
-            fprintf('Event %-2d | %+-10.2e | %+-12.2e | %+-11.2e | %+-14.2f\n', ...
+            fprintf('Event %-2d | %+-10.2e | %+-12.2e | %-11.2e | %-14.2f\n', ...
                 i, theor_delta_n(i), dn_exp(i), err_dn_abs(i), err_dn_rel(i));
         end
     end
@@ -348,7 +348,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
     fprintf('%s\n', repmat('=', 1, 68));
 
     % --------------------------------------------------------------------
-    % COMPARATIVE TABLE 4: DELTA_T (Theoretical vs Calculated refractive index variations)
+    % COMPARATIVE TABLE 4: DELTA_T (Theoretical vs Calculated temperature variations)
     % --------------------------------------------------------------------
     fprintf('\n%s\n', repmat('=', 1, 68));
     fprintf('                     COMPARISON TABLE - DELTA T\n');
@@ -361,7 +361,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
             fprintf('Event %-2d | %-+10.2e | %-12s | %-11s | %-14s\n', i, ...
                 theor_delta_T(i), 'NOT DETECTED', 'N/A', 'N/A');
         else
-            fprintf('Event %-2d | %+-10.2e | %+-12.2e | %-+11.2e | %-+14.2f\n', ...
+            fprintf('Event %-2d | %+-10.2e | %+-12.2e | %-11.2e | %-14.2f\n', ...
                 i, theor_delta_T(i), dT_exp(i), err_dT_abs(i), err_dT_rel(i));
         end
     end

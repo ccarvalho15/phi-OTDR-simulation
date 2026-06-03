@@ -632,12 +632,14 @@ min_peak_dist = round(pert_length/dz); % Minimum inter-peak grid spacing
 %                        on long signal slopes
 peak_opts = { ...
     'MinPeakHeight',      threshold, ...
-    'MinPeakDistance',    min_peak_dist * dz, ...
+    'MinPeakDistance',    min_peak_dist, ...
     'MinPeakProminence',  threshold * 0.3 };
 
-[pks_pos, locs_pos] = findpeaks( smooth_freq_shift, z_valid, peak_opts{:});
-[pks_neg, locs_neg] = findpeaks(-smooth_freq_shift, z_valid, peak_opts{:});
+[pks_pos, idx_pos] = findpeaks( smooth_freq_shift, peak_opts{:});
+[pks_neg, idx_neg] = findpeaks(-smooth_freq_shift, peak_opts{:});
 pks_neg = -pks_neg; % Restore true (negative) amplitudes
+locs_pos = z_valid(idx_pos);
+locs_neg = z_valid(idx_neg);
 
 % -------------------------------------------------------------------
 % 7.4 MERGE AND STOR ALL DETECTED EVENTS BY POSITION
