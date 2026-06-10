@@ -65,7 +65,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
         % yield positive values, but a physical compression/strain event 
         % produces a NEGATIVE optical frequency shift in phase-sensitive 
         % OTDR. Negation recovers the true signed shift.
-        shift_Hz = - all_pks(i); 
+        shift_Hz = all_pks(i); 
         
         % Calculate the refractive index variation (Delta_n) using the 
         % optical relationship:
@@ -256,7 +256,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
                 end
                 
                 % Calculate frequency shift error metrics
-                shift_MHz_exp(i) = -all_pks(best_idx) / 1e6; 
+                shift_MHz_exp(i) = all_pks(best_idx) / 1e6; 
                 err_shift_abs(i) = abs(shift_MHz_exp(i) - theor_shifts(i));
                 if theor_shifts(i) ~= 0
                     err_shift_rel(i) = (err_shift_abs(i) / abs(theor_shifts(i))) ...
@@ -264,7 +264,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
                 end
                 
                 % Calculate refractive index variation (Delta_n) metrics
-                dn_exp(i) = (-all_pks(best_idx) * n_ave) / nu0;
+                dn_exp(i) = (all_pks(best_idx) * n_ave) / nu0;
                 err_dn_abs(i) = abs(dn_exp(i) - theor_delta_n(i));
                 if theor_delta_n(i) ~= 0
                     err_dn_rel(i) = (err_dn_abs(i) / abs(theor_delta_n(i))) ...
