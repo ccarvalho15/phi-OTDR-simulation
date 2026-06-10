@@ -1,7 +1,9 @@
 clear; clc; close all
 addpath('functions\')
+addpath('sections\')
 
 %% =======================================================================
+clc
 % 1. SYSTEM CONFIGURATION & WAVEGUIDE PROPERTIES
 % ========================================================================
 %
@@ -210,7 +212,12 @@ end
 % Unique index change magnitudes per event 
 %   positive = heating / tension,
 %   negative = cooling / compression
-magnitudes = [0.38e-7; 6.84e-7; 2.28e-7; -9.81e-7; -1.14e-7;];
+% magnitudes = [-0.38e-6; 6.84e-7; -2.28e-7; +9.81e-7; -1.14e-7;];
+magnitudes = [+9.828e-6;   % +1.0 °C
+              -4.914e-6;   % -0.5 °C
+              +2.948e-6;   % +0.3 °C
+              -9.828e-7;   % -0.1 °C
+              +4.914e-6];  % +0.5 °C
 
 % Validate that all events fit within the fiber
 first_event = sensing_zone; 
@@ -682,17 +689,17 @@ title('Detected Frequency Shift along the Fiber');
 % High correlation (close to 1.0) indicates high similarity between 
 % the reference and signal Rayleigh spectra at the shifted frequency.
 
-figure(3)
-set(gcf,  'Name', '3D CC (reduced)');
-[Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
-surf(Z_mesh, F_mesh, corr_map, 'EdgeColor', 'none')
-view(35, 45); colormap('jet'); colorbar;
-xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
-title('3D Cross-Correlation Map');
-rotate3d on;
-xlim([max(210, first_event - 10) min(L, last_event + 10)]);  % Fiber length
-ylim([-250 250]); % Frequency shift window
-zlim([-0.5 1]); % Correlation magnitude scale
+% figure(3)
+% set(gcf,  'Name', '3D CC (reduced)');
+% [Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
+% surf(Z_mesh, F_mesh, corr_map, 'EdgeColor', 'none')
+% view(35, 45); colormap('jet'); colorbar;
+% xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
+% title('3D Cross-Correlation Map');
+% rotate3d on;
+% xlim([max(210, first_event - 10) min(L, last_event + 10)]);  % Fiber length
+% ylim([-250 250]); % Frequency shift window
+% zlim([-0.5 1]); % Correlation magnitude scale
 
 
 %%
@@ -743,32 +750,32 @@ zlim([-0.5 1]); % Correlation magnitude scale
 %%
 % --- FIGURE 5: ATTENUATION IMPACT ANALYSIS -----
 
-P_ideal_mean = mean(abs(E_ref_id).^2, 1);
-P_noisy_mean = mean(abs(E_ref).^2,    1);
-
-% Normalizing electric field
-% Calculates the scaling factor to map dimensionless simulated fields to 
-% physical mW. Using mean of the first point to stabilize against coherent 
-% fading (speckle).
-scale_factor = P_input_mW / max(P_ideal_mean);
-
-% Select the first frequency from the sweep for visualization
-P_ref_ideal = P_ideal_mean * scale_factor;
-P_ref_loss  = P_noisy_mean * scale_factor;
-
-% Comparing the backscattered intensity with and without fiber loss
-figure(6)
-set(gcf, 'Name', 'Attenuation Impact');
-
-% Subplot 2: Logarithmic Scale (OTDR Trace)
-plot(z_valid, 10*log10(P_ref_ideal + eps), 'b', 'DisplayName', ...
-    'Ideal (No Loss)');
-hold on;
-plot(z_valid, 10*log10(P_ref_loss + eps), 'r', 'DisplayName', ...
-    ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
-hold off;
-title('Backscattered Intensity (Logarithmic Scale)'); 
-ylabel('Power (dBm)'); xlabel('Distance (m)'); grid on;  legend('Location', 'southeast');
+% P_ideal_mean = mean(abs(E_ref_id).^2, 1);
+% P_noisy_mean = mean(abs(E_ref).^2,    1);
+% 
+% % Normalizing electric field
+% % Calculates the scaling factor to map dimensionless simulated fields to 
+% % physical mW. Using mean of the first point to stabilize against coherent 
+% % fading (speckle).
+% scale_factor = P_input_mW / max(P_ideal_mean);
+% 
+% % Select the first frequency from the sweep for visualization
+% P_ref_ideal = P_ideal_mean * scale_factor;
+% P_ref_loss  = P_noisy_mean * scale_factor;
+% 
+% % Comparing the backscattered intensity with and without fiber loss
+% figure(6)
+% set(gcf, 'Name', 'Attenuation Impact');
+% 
+% % Subplot 2: Logarithmic Scale (OTDR Trace)
+% plot(z_valid, 10*log10(P_ref_ideal + eps), 'b', 'DisplayName', ...
+%     'Ideal (No Loss)');
+% hold on;
+% plot(z_valid, 10*log10(P_ref_loss + eps), 'r', 'DisplayName', ...
+%     ['Fiber Loss (', num2str(attenuation), ' dB/km) + Noise']);
+% hold off;
+% title('Backscattered Intensity (Logarithmic Scale)'); 
+% ylabel('Power (dBm)'); xlabel('Distance (m)'); grid on;  legend('Location', 'southeast');
 
 %%
 % --- FIGURE 7: Peak Detection Diagnostics ---
