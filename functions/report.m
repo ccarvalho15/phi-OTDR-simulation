@@ -37,7 +37,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
     fprintf('\n%s\n', repmat('=', 1, 68));
     fprintf('                DETECTION REPORT - PHI-OTDR\n');
     fprintf('%s\n', repmat('=', 1, 68));
-    fprintf('%-8s | %-16s | %-10s | %-9s | %.11s\n', ...
+    fprintf('%-8s | %-16s | %-10s | %-9s | %-11s\n', ...
         'Event', 'Location (m)', 'Shift (MHz)', 'Delta_n', 'Delta_T (K)');
     fprintf('%s\n', repmat('-', 1, 68));
     
@@ -112,12 +112,16 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
         match_idx = find(all_locs >= limit_start & all_locs <= limit_end);
         
         if ~isempty(match_idx)
+            theor_center = (theor_starts(i) + theor_ends(i)) / 2;
+            [~, local_best] = min(abs(all_locs(match_idx) - theor_center));
+            best_peak_idx = match_idx(local_best);
+            
             TP = TP + 1;
             % Flag these peaks as successfully matched
-            detected_matched(match_idx) = true; 
+            detected_matched(best_peak_idx) = true;
             fprintf(['TP (Event %d at [%.2f; %.2f] m) :: DETECTED at peak ' ...
                 '%.2f m\n'], i, theor_starts(i), theor_ends(i), ...
-                all_locs(match_idx(1)));
+                all_locs(best_peak_idx));
         else
             FN = FN + 1;
             fprintf(['FN (Event %d at [%.2f; %.2f] m) :: NOT DETECTED by ' ...
@@ -131,8 +135,16 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
     if FP > 0
         fp_indices = find(~detected_matched);
         for k = 1:length(fp_indices)
-            fprintf('FP (Noise Artifact) :: DETECTED at peak %.2f m\n', ...
-                all_locs(fp_indices(k)));
+            is_near = any(all_locs(fp_indices(k)) >= (theor_starts - match_tolerance) ...
+                & all_locs(fp_indices(k)) <= (theor_ends + match_tolerance));
+            
+            if is_near
+                fprintf('FP (Multi-Peak) :: DETECTED at peak %.2f m\n', ...
+                    all_locs(fp_indices(k)));
+            else
+                fprintf('FP (Noise Artifact) :: DETECTED at peak %.2f m\n', ...
+                    all_locs(fp_indices(k)));
+            end
         end
     else
         fprintf(['No False Alarms (FP) detected outside the perturbation ' ...
@@ -380,20 +392,22 @@ function [idx_start, idx_end] = find_event_bounds(smooth_freq_shift, idx_peak, t
 %   threshold.
 % -------------------------------------------------------------------------
     % Initialize boundaries at the localized peak index
+    N = length(smooth_freq_shift);
+    sign_peak = sign(smooth_freq_shift(idx_peak));
     idx_start = idx_peak;
     
     % Regress backward down the spatial trace until the frequency shift 
     % drops below 30% of the target noise floor threshold
-    while idx_start > 1 && abs(smooth_freq_shift(idx_start)) > ...
-            (threshold * 0.3)
+    while idx_start > 1 && ...
+            sign_peak * smooth_freq_shift(idx_start) > threshold
         idx_start = idx_start - 1;
     end
     
     % Progress forward down the spatial trace until the frequency shift
     % drops below 30% of the target noise floor threshold
     idx_end = idx_peak;
-    while idx_end < length(smooth_freq_shift) && ...
-            abs(smooth_freq_shift(idx_end)) > (threshold * 0.3)
+    while idx_end < N && ...
+            sign_peak * smooth_freq_shift(idx_end) > threshold
         idx_end = idx_end + 1;
     end
 end
