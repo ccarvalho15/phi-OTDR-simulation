@@ -95,13 +95,15 @@ sigma_n = 2e-6;    % Standard deviation of background index fluctuations
 % -------------------------------------------------------------------------
 % 1.7  FREQUENCY SWEEP PARAMETERS
 % -------------------------------------------------------------------------
-freq_range = 1000e6;    % Total optical frequency scan range (Hz) (1 GHz)
-delta_f = 5e6;          % Frequency tuning step (Hz) (5 MHz)
+freq_range = 2.4e9;    % Total optical frequency scan range (Hz) (1 GHz)
+delta_f = 1e6;          % Frequency tuning step (Hz) (5 MHz)
 
 % Absolute frequency vector centered on the carrier nu0
 f = nu0 + (-freq_range/2 : delta_f : freq_range/2);  
 Nf = length(f);         % Number of frequency steps in the sweep
 
+% fprintf('f range: [nu0 %+.0f MHz, nu0 %+.0f MHz], Nf=%d\n', ...
+%     (f(1)-nu0)/1e6, (f(end)-nu0)/1e6, length(f));
 
 % -------------------------------------------------------------------------
 % 1.8  PERTURBATION GEOMETRY
@@ -147,11 +149,12 @@ fprintf([ ...
     'Width of each event:                   %.2f m\n' ...
     'Separation between events:             %.2f m\n' ...
     'Sensing Zone Start:                    %d m\n' ...
+    'Noise Threshold Multiplier:            %.1fx\n' ...
     'Spatial Validation Radius              %.1f m\n'], ...
     L, d, Nz, M, dz, attenuation, alpha, n_ave, lambda0*1e9, nu0, ...
     pulse_width*1e9, P_input_mW, P_input_dBm, freq_range/1e6, delta_f/1e6, ...
     Nf, linewidth/1e3, SNR_dB, sigma_n, num_events, pert_length, spacing, ...
-    sensing_zone, match_tolerance);
+    sensing_zone, std_mult, match_tolerance);
 
 %% =======================================================================
 % 2. STOCHASTIC RAYLEIGH SCATTERING PROFILE
@@ -213,11 +216,11 @@ end
 %   positive = heating / tension,
 %   negative = cooling / compression
 % magnitudes = [-0.38e-6; 6.84e-7; -2.28e-7; +9.81e-7; -1.14e-7;];
-magnitudes = [+9.828e-6;   % +1.0 °C
-              -4.914e-6;   % -0.5 °C
-              +2.948e-6;   % +0.3 °C
-              -9.828e-7;   % -0.1 °C
-              +4.914e-6];  % +0.5 °C
+magnitudes = [+5.8968e-6;   % +0.6 °C
+              -4.9140e-6;   % -0.5 °C
+              +2.9484e-6;   % +0.3 °C
+              -9.8280e-7;   % -0.1 °C
+              +6.8796e-6];  % +0.7 °C
 
 % Validate that all events fit within the fiber
 first_event = sensing_zone; 
@@ -572,7 +575,8 @@ for k = 1:Nz-M+1
     I_sig = abs(E_sig(:,k)).^2;
     
     % Normalised cross-correlation of zero-mean spectra
-    [cv, lags] = xcorr(I_sig - mean(I_sig), I_ref - mean(I_ref), 'coeff');
+    % [cv, lags] = xcorr(I_sig - mean(I_sig), I_ref - mean(I_ref), 'coeff');
+    [cv, lags] = xcorr(I_ref - mean(I_ref), I_sig - mean(I_sig), 'coeff');
     corr_map(:, k) = cv;
     
     % Peak lag -> spectral shift at position k
@@ -628,7 +632,7 @@ threshold = std_mult * std(freq_shift_calib);
 % -------------------------------------------------------------------
 %   Events with opposite-sign delta_n produce opposite-sign shifts, so
 %   positive and negative peaks are detected independently.
-min_peak_dist = round(pert_length/dz); % Minimum inter-peak grid spacing
+min_peak_dist = round((pert_length * 1.5)/dz); % Minimum inter-peak grid spacing
 
 % Common findpeaks settings:
 %   MinPeakHeight :: rejects all variations below the threshold floor
@@ -640,7 +644,7 @@ min_peak_dist = round(pert_length/dz); % Minimum inter-peak grid spacing
 peak_opts = { ...
     'MinPeakHeight',      threshold, ...
     'MinPeakDistance',    min_peak_dist, ...
-    'MinPeakProminence',  threshold * 0.3 };
+    'MinPeakProminence',  threshold * 0.9 };
 
 [pks_pos, idx_pos] = findpeaks( smooth_freq_shift, peak_opts{:});
 [pks_neg, idx_neg] = findpeaks(-smooth_freq_shift, peak_opts{:});
@@ -675,7 +679,7 @@ report(theor_starts, theor_ends, theor_shifts, theor_delta_n, ...
 % --- FIGURE 1: 1D Frequency Shift Profile ---
 % This plot represents the demodulated sensing signal.
 % The peaks should align with the 'start_idx' and 'end_idx' defined in Section 3.
-
+% 
 figure(2)
 set(gcf,  'Name', 'Freq Shift Profile');
 plot(z(1:Nz-M+1), freq_shift / 1e6, 'LineWidth', 1.5)
@@ -708,43 +712,43 @@ title('Detected Frequency Shift along the Fiber');
 % mathematical peak detection (white line).
 % This visualization is excellent for assessing the Signal-to-Noise Ratio (SNR).
 
-figure(4)
-set(gcf, 'Name', '2D C. Peak Tracking'); 
-[Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
-contourf(Z_mesh, F_mesh, corr_map, 20, 'LineColor', 'none'); 
-colormap('jet'); colorbar;
-hold on;
-% The white line traces the maximum correlation lag, verifying the algorithm's accuracy
-plot(z(1:Nz-M+1), freq_shift / 1e6, 'w', 'LineWidth', 1.5); 
-hold off;
-xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)');
-title('2D Correlation Map (Top View with Peak Trace)');
-% Focus the view on the perturbed regions for better detail
-xlim([max(0, first_event - 50) min(L, last_event + 50)]); 
-ylim([-250 250]);
+% figure(4)
+% set(gcf, 'Name', '2D C. Peak Tracking'); 
+% [Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
+% contourf(Z_mesh, F_mesh, corr_map, 20, 'LineColor', 'none'); 
+% colormap('jet'); colorbar;
+% hold on;
+% % The white line traces the maximum correlation lag, verifying the algorithm's accuracy
+% plot(z(1:Nz-M+1), freq_shift / 1e6, 'w', 'LineWidth', 1.5); 
+% hold off;
+% xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)');
+% title('2D Correlation Map (Top View with Peak Trace)');
+% % Focus the view on the perturbed regions for better detail
+% xlim([max(0, first_event - 50) min(L, last_event + 50)]); 
+% ylim([-1500 1500]);
 
 
-%%
-% --- FIGURE 4: Summary Overview ---
-% Combined plot for comparative analysis of spatial and spectral data.
-figure(5)
-set(gcf, 'Name', 'Overview');
-subplot(2,1,1)
-plot(z(1:Nz-M+1), freq_shift / 1e6, 'LineWidth', 1.5)
-grid on; ylabel('Frequency Shift (MHz)'); xlabel('Distance (m)');
-title('Detected Frequency Shift along the Fiber');
-
-subplot(2,1,2)
-[Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
-surf(Z_mesh, F_mesh, corr_map, 'EdgeColor', 'none')
-view(35, 45); colormap('jet'); colorbar;
-xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
-title('3D Cross-Correlation Map');
-rotate3d on;
-
-xlim([0 L]); % Full fiber length
-ylim([-250 250]); % Frequency shift window
-zlim([-0.5 1]); % Correlation magnitude scale
+% %%
+% % --- FIGURE 4: Summary Overview ---
+% % Combined plot for comparative analysis of spatial and spectral data.
+% figure(5)
+% set(gcf, 'Name', 'Overview');
+% subplot(2,1,1)
+% plot(z(1:Nz-M+1), freq_shift / 1e6, 'LineWidth', 1.5)
+% grid on; ylabel('Frequency Shift (MHz)'); xlabel('Distance (m)');
+% title('Detected Frequency Shift along the Fiber');
+% 
+% subplot(2,1,2)
+% [Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
+% surf(Z_mesh, F_mesh, corr_map, 'EdgeColor', 'none')
+% view(35, 45); colormap('jet'); colorbar;
+% xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
+% title('3D Cross-Correlation Map');
+% rotate3d on;
+% 
+% xlim([0 L]); % Full fiber length
+% ylim([-1500 1500]); % Frequency shift window
+% zlim([-0.5 1]); % Correlation magnitude scale
 
 
 %%
@@ -792,10 +796,31 @@ scatter(locs_neg, pks_neg/1e6, 80, 'rv', 'filled', 'DisplayName', 'Detected (−
 yline( threshold/1e6, 'g--', 'LineWidth', 1, 'DisplayName', '+Threshold');
 yline(-threshold/1e6, 'r--', 'LineWidth', 1, 'DisplayName', '−Threshold');
 hold off;
+
+offset_y = max(smooth_freq_shift/1e6) * 0.04; 
+
+% Labels para os picos positivos (Texto ligeiramente ACIMA do pico)
+for p = 1:length(locs_pos)
+    text_str = sprintf('%+.1f MHz', pks_pos(p)/1e6);
+    text(locs_pos(p), (pks_pos(p)/1e6) + offset_y, text_str, ...
+        'HorizontalAlignment', 'center', ...
+        'VerticalAlignment', 'bottom', ...
+        'FontSize', 9, 'FontWeight', 'bold', 'Color', [0.1 0.5 0.1]);
+end
+
+% Labels para os picos negativos (Texto ligeiramente ABAIXO do pico)
+for n = 1:length(locs_neg)
+    text_str = sprintf('%+.1f MHz', pks_neg(n)/1e6);
+    text(locs_neg(n), (pks_neg(n)/1e6) - offset_y, text_str, ...
+        'HorizontalAlignment', 'center', ...
+        'VerticalAlignment', 'top', ...
+        'FontSize', 9, 'FontWeight', 'bold', 'Color', [0.7 0.1 0.1]);
+end
+
 xlabel('Distance (m)'); ylabel('Frequency Shift (MHz)');
 title('Peak Detection — φ-OTDR');
-legend('Location', 'northwest'); grid on;
-xlim([0 240])
+legend('Location', 'southoutside', 'Orientation', 'horizontal'); grid on;
+xlim([205 240])
 
 %%
 
