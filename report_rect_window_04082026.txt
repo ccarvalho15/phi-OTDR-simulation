@@ -1,0 +1,200 @@
+ ==== PHI-OTDR SIMULATION CONFIGURATION ==== 
+Fiber Length (L):                      240 m
+Spatial Resolution (d):                1.03 m
+Total Spatial Points (Nz)              4800
+Number of Scattering Segments (M):     21
+Sampling Interval (dz):                0.050 m
+Attenuation:                           0.20 dB/km
+Attenuation Coefficient (α):           4.6052e-05 m^-1
+Average Refractive Index (n_ave):      1.456
+Operating Wavelength (lambda_0):       1550 nm
+Central frequency (nu_0)               1.9355e+14 Hz
+Pulse Width:                           10 ns
+Input Power:                           10 mW (10.0 dBm)
+Sweep Range:                           2400 MHz
+Frequency step (Δf):                   10 MHz
+Number of frequencies (Nf):            241
+Laser Linewidth (Δν):                  100.0 kHz
+System SNR:                            12 dB
+Index standard deviation (σ_n):        2.0e-06
+Number of Events:                      5
+Width of each event:                   1.50 m
+Separation between events:             4.00 m
+Sensing Zone Start:                    210 m
+Noise Threshold Multiplier:            3.0x
+Spatial Validation Radius              2.0 m
+
+=====================================================================
+                     PERTURBATION EVENTS - PHI-OTDR
+=====================================================================
+Event    | Location (m)     | Shift (MHz) | Delta_n   | Delta_T (K)
+---------------------------------------------------------------------
+Event 1  | [212.00; 213.50] | +783.87     | +5.90e-06 | +0.6000   
+Event 2  | [217.50; 219.00] | -653.23     | -4.91e-06 | -0.5000   
+Event 3  | [223.00; 224.50] | +391.94     | +2.95e-06 | +0.3000   
+Event 4  | [228.50; 230.00] | -130.65     | -9.83e-07 | -0.1000   
+Event 5  | [234.00; 235.50] | +914.52     | +6.88e-06 | +0.7000   
+---------------------------------------------------------------------
+
+
+Pulse shaping selection:     
+   1) RC Filter Model
+   2) Super-Gaussian Model
+   3) Rectangular Pulse
+> Option 3
+{Error using <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('matlab.ui.Figure/set')" style="font-weight:bold">matlab.ui.Figure/set</a>
+Unrecognized property FontSize for class Figure.
+
+Error in <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('backscatter_simulation', 'C:\Users\LabUser\Desktop\Cristiana\sections\backscatter_simulation.m', 199)" style="font-weight:bold">backscatter_simulation</a> (<a href="matlab: opentoline('C:\Users\LabUser\Desktop\Cristiana\sections\backscatter_simulation.m',199,0)">line 199</a>)
+        figure(1); set(gcf, 'Name', 'Pulse Shape', 'FontSize', 14);
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Error in <a href="matlab:matlab.lang.internal.introspective.errorDocCallback('main', 'C:\Users\LabUser\Desktop\Cristiana\main.m', 47)" style="font-weight:bold">main</a> (<a href="matlab: opentoline('C:\Users\LabUser\Desktop\Cristiana\main.m',47,0)">line 47</a>)
+    backscatter_simulation(conf, shape_choice, r, n, n_pert);
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+}
+ ==== PHI-OTDR SIMULATION CONFIGURATION ==== 
+Fiber Length (L):                      240 m
+Spatial Resolution (d):                1.03 m
+Total Spatial Points (Nz)              4800
+Number of Scattering Segments (M):     21
+Sampling Interval (dz):                0.050 m
+Attenuation:                           0.20 dB/km
+Attenuation Coefficient (α):           4.6052e-05 m^-1
+Average Refractive Index (n_ave):      1.456
+Operating Wavelength (lambda_0):       1550 nm
+Central frequency (nu_0)               1.9355e+14 Hz
+Pulse Width:                           10 ns
+Input Power:                           10 mW (10.0 dBm)
+Sweep Range:                           2400 MHz
+Frequency step (Δf):                   10 MHz
+Number of frequencies (Nf):            241
+Laser Linewidth (Δν):                  100.0 kHz
+System SNR:                            12 dB
+Index standard deviation (σ_n):        2.0e-06
+Number of Events:                      5
+Width of each event:                   1.50 m
+Separation between events:             4.00 m
+Sensing Zone Start:                    210 m
+Noise Threshold Multiplier:            3.0x
+Spatial Validation Radius              2.0 m
+
+=====================================================================
+                     PERTURBATION EVENTS - PHI-OTDR
+=====================================================================
+Event    | Location (m)     | Shift (MHz) | Delta_n   | Delta_T (K)
+---------------------------------------------------------------------
+Event 1  | [212.00; 213.50] | +783.87     | +5.90e-06 | +0.6000   
+Event 2  | [217.50; 219.00] | -653.23     | -4.91e-06 | -0.5000   
+Event 3  | [223.00; 224.50] | +391.94     | +2.95e-06 | +0.3000   
+Event 4  | [228.50; 230.00] | -130.65     | -9.83e-07 | -0.1000   
+Event 5  | [234.00; 235.50] | +914.52     | +6.88e-06 | +0.7000   
+---------------------------------------------------------------------
+
+
+Pulse shaping selection:     
+   1) RC Filter Model
+   2) Super-Gaussian Model
+   3) Rectangular Pulse
+> Option 3
+
+====================================================================
+                DETECTION REPORT - PHI-OTDR
+====================================================================
+Event    | Location (m)     | Shift (MHz) | Delta_n   | Delta_T (K)
+--------------------------------------------------------------------
+Event 1  | [211.15; 213.30] | +605.71     | +4.5566e-06 | +0.4636   
+Event 2  | [216.30; 219.35] | -647.14     | -4.8682e-06 | -0.4953   
+Event 3  | [221.85; 224.40] | +392.86     | +2.9553e-06 | +0.3007   
+Event 4  | [227.35; 230.10] | -128.57     | -9.6720e-07 | -0.0984   
+Event 5  | [232.55; 234.00] | +794.29     | +5.9751e-06 | +0.6080   
+Event 6  | [233.95; 235.40] | -488.10     | -3.6718e-06 | -0.3736   
+--------------------------------------------------------------------
+
+
+==================================================================
+         STATISTICAL PERFORMANCE ANALYSIS (TP, FP, FN)
+==================================================================
+TP (Event 1 at [212.00; 213.50] m) :: DETECTED at peak 212.20 m
+TP (Event 2 at [217.50; 219.00] m) :: DETECTED at peak 217.65 m
+TP (Event 3 at [223.00; 224.50] m) :: DETECTED at peak 223.25 m
+TP (Event 4 at [228.50; 230.00] m) :: DETECTED at peak 228.75 m
+TP (Event 5 at [234.00; 235.50] m) :: DETECTED at peak 234.50 m
+FP (Multi-Peak) :: DETECTED at peak 233.45 m
+==================================================================
+                       SUMMARIZE REPORT
+==================================================================
+Total Real Perturbations: 5
+Total Detected Peaks:     6
+------------------------------------------------------------------
+True Positives (TP):      5 (100.00% of real events detected)
+False Negatives (FN):     0 (0.00% of real events missed)
+False Positives (FP):     1 (16.67% of triggers were false alarms)
+------------------------------------------------------------------
+System Sensitivity:       100.0%
+System Precision:         83.3%
+F1-Score:                 90.9%
+==================================================================
+
+
+====================================================================================================
+                                    COMPARISON TABLE - LOCALIZATION
+====================================================================================================
+Event    | Theoretical (m)  | Experimental (m) | Err. Center (m) | Err. Width (m) | Rel. Error (%)    
+----------------------------------------------------------------------------------------------------
+Event 1  | [212.00; 213.50] | [211.15; 213.30] | 0.0000          | 0.6500         | 43.33             
+Event 2  | [217.50; 219.00] | [216.30; 219.35] | 0.0000          | 1.5500         | 103.33            
+Event 3  | [223.00; 224.50] | [221.85; 224.40] | 0.0000          | 1.0500         | 70.00             
+Event 4  | [228.50; 230.00] | [227.35; 230.10] | 0.0000          | 1.2500         | 83.33             
+Event 5  | [234.00; 235.50] | [233.95; 235.40] | 0.0000          | -0.0500        | -3.33             
+====================================================================================================
+
+
+=============================================================================
+                       COMPARISON TABLE - FREQUENCY SHIFT
+=============================================================================
+Event    | Theor. (MHz)  | Exper. (MHz) | Abs. Error (MHz) | Rel. Error (%)
+-----------------------------------------------------------------------------
+Event 1  | +783.87       | +605.71      | 178.16           | 22.73         
+Event 2  | -653.23       | -647.14      | 6.08             | 0.93          
+Event 3  | +391.94       | +392.86      | 0.92             | 0.24          
+Event 4  | -130.65       | -128.57      | 2.07             | 1.59          
+Event 5  | +914.52       | -488.10      | 1402.61          | 153.37        
+=============================================================================
+
+
+====================================================================
+                     COMPARISON TABLE - DELTA N
+====================================================================
+Event    | Theor.     | Exper.       | Abs. Error  | Rel. Error (%)
+--------------------------------------------------------------------
+Event 1  | +5.8968e-06 | +4.5566e-06  | 1.34e-06    | 22.73         
+Event 2  | -4.9140e-06 | -4.8682e-06  | 4.58e-08    | 0.93          
+Event 3  | +2.9484e-06 | +2.9553e-06  | 6.93e-09    | 0.24          
+Event 4  | -9.8280e-07 | -9.6720e-07  | 1.56e-08    | 1.59          
+Event 5  | +6.8796e-06 | -3.6718e-06  | 1.06e-05    | 153.37        
+====================================================================
+
+====================================================================
+                     COMPARISON TABLE - DELTA T
+====================================================================
+Event    | Theor.     | Exper.       | Abs. Error  | Rel. Error (%)
+--------------------------------------------------------------------
+Event 1  | +0.6000    | +0.4636      | 1.36e-01    | 22.73         
+Event 2  | -0.5000    | -0.4953      | 4.66e-03    | 0.93          
+Event 3  | +0.3000    | +0.3007      | 7.05e-04    | 0.24          
+Event 4  | -0.1000    | -0.0984      | 1.59e-03    | 1.59          
+Event 5  | +0.7000    | -0.3736      | 1.07e+00    | 153.37        
+====================================================================
+
+fig2 = 
+
+  <a href="matlab:helpPopup('matlab.ui.Figure')" style="font-weight:bold">Figure</a> (2) with properties:
+
+      Number: 2
+        Name: ''
+       Color: [0.9608 0.9608 0.9608]
+    Position: [423 230 1074 647]
+       Units: 'pixels'
+
+  Show <a href="matlab:if exist('fig2', 'var'), matlab.graphics.internal.getForDisplay('fig2', fig2, 'matlab.ui.Figure'), else, matlab.graphics.internal.getForDisplay('fig2'), end">all properties</a>
+

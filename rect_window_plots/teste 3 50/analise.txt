@@ -1,0 +1,55 @@
+Excelente! Com **50 execuções de Monte Carlo**, os teus dados ganharam robustez estatística e os heatmaps mostram tendências super suaves e bem definidas.
+
+Aqui está a análise detalhada do que estes gráficos com 50 iterações revelam:
+
+---
+
+## 1. Principais Conclusões dos Dados
+
+### 🔴 Sensibilidade (Recall) = 100.0% Consistente
+
+* **O que mostra:** Em **todas** as 50 iterações de cada um dos $6 \times 7 = 42$ cenários, o algoritmo detetou **100% dos 5 eventos reais** (incluindo o evento de $-0.1\ ^\circ\text{C}$).
+* **Conclusão:** O limite de detecção (`std_mult` até 4.5) ainda é seguro o suficiente para nunca perder o evento de menor magnitude.
+
+---
+
+### 🟢 Precisão (Precision): Padrão Claro e Estável
+
+Ao contrário da execução única, a média de 50 iterações revela um comportamento matemático muito limpo:
+
+1. **Subir o `std_mult` melhora sempre a precisão:**
+* Em qualquer linha de SNR, à medida que passas de $1.5$ para $4.5$, a precisão cresce monotonicamente (por exemplo, a $8\text{ dB}$, sobe de **60.68%** para **74.74%**).
+* **Porquê?** Um *threshold* mais alto elimina sistematicamente os picos de ruído residual (*sidelobes* do pulso retangular).
+
+
+2. **Aumentar o SNR degrada a precisão para o Pulso Retangular:**
+* Com `std_mult = 4.5`, quando passas de **8 dB para 18 dB**, a precisão cai drasticamente de **74.15% para 48.38%**!
+* **Porquê este comportamento contra-intuitivo?**
+* Em **SNR baixo (8 dB)**, o ruído gaussiano aleatório é dominante e flutua uniformemente. Como o desvio padrão global ($\sigma$) é calculado considerando este ruído maior, o limiar $T = \text{std\_mult} \times \sigma$ fica **mais alto em valor absoluto**, esmagando os picos secundários.
+* Em **SNR alto (18 dB)**, o ruído gaussiano desaparece quase por completo. A estimativa do desvio padrão ($\sigma$) cai para valores muito baixos. No entanto, a **estrutura determinística dos lóbulos secundários (sincs) do pulso retangular continua lá com a mesma amplitude relativa**. Com um $\sigma$ global pequeno, estes *sidelobes* ultrapassam facilmente o limiar, gerando múltiplos falsos alarmes por execução!
+
+
+
+
+
+---
+
+### 🟠 F1-Score: Ponto Ótimo Global
+
+* O F1-Score é máximo na região de **baixo SNR e alto `std_mult**`:
+* **Melhor ponto global:** **SNR = 8 dB** com **`std_mult` = 4.0** ($\text{F1} = \mathbf{85.32\%}$, $\text{Precision} = \mathbf{74.74\%}$).
+* **Pior região:** **SNR = 18 dB** com **`std_mult` = 1.5** ($\text{F1} = \mathbf{50.25\%}$, $\text{Precision} = \mathbf{33.78\%}$).
+
+
+
+---
+
+## 2. Destaques para Escrever na Tese / Relatório
+
+Podes sintetizar estes resultados no teu trabalho com os seguintes pontos:
+
+> 1. **Robustez na Deteção (Recall 100%):** O pulso retangular garante uma deteção perfeita de todas as perturbações térmicas (até $-0.1\ ^\circ\text{C}$) em toda a gama de SNR ($8-18\text{ dB}$) e multiplicadores de limiar ($1.5-4.5$).
+> 2. **Limitação por Falsos Positivos:** O desempenho do pulso retangular é estritamente limitado pela sua baixa precisão, provocada pelas elevadas oscilações espectrais/lóbulos secundários inerentes à janela retangular no domínio do tempo.
+> 3. **Efeito de "Máscara de Ruído":** O algoritmo apresenta melhor precisão a SNRs mais baixos ($8-10\text{ dB}$) porque o ruído gaussiano eleva o limiar absoluto de deteção ($\sigma$), mascarando os lóbulos secundários determinísticos que, a SNRs mais elevados ($16-18\text{ dB}$), provocam uma degradação na precisão devido a uma subestimativa de $\sigma$.
+> 
+>
