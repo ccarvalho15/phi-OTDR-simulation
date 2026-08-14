@@ -32,9 +32,13 @@ function [Precision, Sensitivity, F1] = statistical_analysis(gt, conf, ...
         match_idx = find(all_locs >= limit_start & all_locs <= limit_end);
         
         if ~isempty(match_idx)
+            theor_center = (gt.theor_starts(i) + gt.theor_ends(i)) / 2;
+            [~, local_best] = min(abs(all_locs(match_idx) - theor_center));
+            best_peak_idx = match_idx(local_best);
+            
             TP = TP + 1;
             % Flag these peaks as successfully matched
-            detected_matched(match_idx) = true; 
+            detected_matched(best_peak_idx) = true;
         else
             FN = FN + 1;
         end
@@ -55,7 +59,6 @@ function [Precision, Sensitivity, F1] = statistical_analysis(gt, conf, ...
     if (Precision + Sensitivity) > 0
         F1 = 2 * (Precision * Sensitivity) / (Precision + Sensitivity);
     end
-end
 
 %% 
 % TP (True Positive) = O sensor detetou um pico e existia lá uma perturbação real

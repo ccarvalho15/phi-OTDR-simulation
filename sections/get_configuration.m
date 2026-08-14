@@ -80,15 +80,15 @@ function conf = get_configuration()
     
     %    SNR = 20 dB is a typical lab operating point; 15 dB adds realistic 
     %    noise while keeping the algorithm testable.
-    conf.SNR_dB = 15;       % Receiver signal-to-noise ratio (dB)
+    conf.SNR_dB = 12;       % Receiver signal-to-noise ratio (dB)
     conf.sigma_n = 2e-6;    % Standard deviation of background index fluctuations
     
     
     % -------------------------------------------------------------------------
     % 1.7  FREQUENCY SWEEP PARAMETERS
     % -------------------------------------------------------------------------
-    conf.freq_range = 1000e6;    % Total optical frequency scan range (Hz) (1 GHz)
-    conf.delta_f = 5e6;          % Frequency tuning step (Hz) (5 MHz)
+    conf.freq_range = 2.4e9;    % Total optical frequency scan range (Hz) (1 GHz)
+    conf.delta_f = 10e6;          % Frequency tuning step (Hz) (5 MHz)
     
     % Absolute frequency vector centered on the carrier nu0
     conf.f = conf.nu0 + (-conf.freq_range/2 : conf.delta_f : conf.freq_range/2);  
@@ -139,12 +139,13 @@ function conf = get_configuration()
         'Width of each event:                   %.2f m\n' ...
         'Separation between events:             %.2f m\n' ...
         'Sensing Zone Start:                    %d m\n' ...
+        'Noise Threshold Multiplier:            %.1fx\n' ...
         'Spatial Validation Radius              %.1f m\n'], ...
         conf.L, conf.d, conf.Nz, conf.M, conf.dz, conf.attenuation, ...
         conf.alpha, conf.n_ave, conf.lambda0*1e9, conf.nu0, ...
         conf.pulse_width*1e9, conf.P_input_mW, conf.P_input_dBm, ...
         conf.freq_range/1e6, conf.delta_f/1e6, conf.Nf, conf.linewidth/1e3, ...
         conf.SNR_dB, conf.sigma_n, conf.num_events, conf.pert_length, ...
-        conf.spacing, conf.sensing_zone, conf.match_tolerance);
+        conf.spacing, conf.sensing_zone, conf.std_mult, conf.match_tolerance);
 end
 

@@ -1,4 +1,6 @@
 clc, clear, close
+addpath('sections\')
+addpath('functions\')
 % 1. SYSTEM CONFIGURATION & WAVEGUIDE PROPERTIES
 
 c = 3e8;                            % Speed of light in vacuum (m/s)

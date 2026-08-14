@@ -328,8 +328,9 @@ E_sig_raw_all = zeros(Nf, Nz - M + 1); % Raw perturbed before receiver noise
 %   Two physically motivated models are offered:
 %     1) RC-filter model :: first-order EOM bandwidth limit (fc = 100 MHz)
 %     2) Super-Gaussian :: flat-top approximation of order N
+%     3) Rectangular Pulse  :: Ideal pulse with instantaneous transitions
 
-fprintf('\nPulse shaping selection:     1) RC Filter Model      2) Super-Gaussian Model\n');
+fprintf('\nPulse shaping selection:     1) RC Filter Model      2) Super-Gaussian Model     3) Rectangular Pulse\n');
 shape_choice = input('  > Option ');
 
 if shape_choice == 1
@@ -397,7 +398,13 @@ if shape_choice == 1
     plot(t_rc_ns, window_full, 'Color', [0.1 0.2 0.8], 'LineWidth', 2, ...
      'DisplayName', 'RC Pulse Shapping');
     hold on;
-    plot(t_window_ns, ones(1,M), 'r--', 'LineWidth', 1.5, 'DisplayName', ...
+    % plot(t_window_ns, ones(1,M), 'r--', 'LineWidth', 1.5, 'DisplayName', ...
+        % 'Ideal Rectangular Pulse');
+    % Ideal rectangular pulse com bordas verticais
+    t_rect_ns = [0, 0, pulse_width*1e9, pulse_width*1e9];
+    v_rect    = [0, 1, 1,               0              ];
+    
+    plot(t_rect_ns, v_rect, 'r--', 'LineWidth', 1.5, 'DisplayName', ...
         'Ideal Rectangular Pulse');
     hold off;
 
@@ -429,17 +436,50 @@ elseif shape_choice == 2
     % Reference: Create a standard rectangular pulse for visual comparison.
     rect_pulse = ones(1, M); 
 
-    % ---- VISUAL VERIFICATION (SUPER-GAUSSIAN SHAPE) ----
+    % ---------------------------------------------------------------------
+    %                               VISUAL CHECK
+    % ---------------------------------------------------------------------
     figure(1); set(gcf, 'Name', 'Pulse Shape');
    
     plot(t_sg * 1e9, window, ...
         'Color', [0.2 0.2 0.8], 'LineWidth', 2, ...
         'DisplayName', ['Super-Gaussian (N = ' num2str(order_N) ')']);
     hold on;
-    plot(t_sg * 1e9, rect_pulse, 'r--', 'LineWidth', 1.5, ...
-         'DisplayName', 'Ideal Rectangular Pulse');
+    % plot(t_sg * 1e9, rect_pulse, 'r--', 'LineWidth', 1.5, ...
+         % 'DisplayName', 'Ideal Rectangular Pulse');
+    % Ideal rectangular pulse com bordas verticais
+    t_rect_ns = [-pulse_width*1e9, -pulse_width*1e9, pulse_width*1e9, pulse_width*1e9];
+    v_rect    = [0, 1, 1, 0];
+    plot(t_rect_ns, v_rect, 'r--', 'LineWidth', 1.5, 'DisplayName', ...
+        'Ideal Rectangular Pulse');
     hold off;
     title('Super Gaussian Model Pulse Shapping');
+    xlabel('Relative Time (ns)'); ylabel('Normalized Amplitude');
+    legend('Location', 'northeast'); ylim([0 1.2]); grid on;
+ 
+elseif shape_choice == 3
+    % -------------------------------------------------------------------------
+    % 4.1.c) IDEAL RECTANGULAR PULSE
+    % -------------------------------------------------------------------------
+    % For an ideal rectangular pulse, every sample within the active window 
+    % has maximum amplitude.
+    window = ones(1, M);
+    window = window / max(window); % Normalise peak to 1
+
+    % ---------------------------------------------------------------------
+    %                               VISUAL CHECK
+    % ---------------------------------------------------------------------
+    figure(1); set(gcf, 'Name', 'Pulse Shape');
+    
+    t_rect = linspace(-pulse_width, pulse_width, M);
+    
+    % Render the perfect rectangular edges using discrete coordinates
+    t_rect_ns = [-pulse_width*1e9, -pulse_width*1e9, pulse_width*1e9, pulse_width*1e9];
+    v_rect    = [0, 1, 1, 0];
+    
+    plot(t_rect_ns, v_rect, 'r-', 'LineWidth', 2, 'DisplayName', 'Ideal Rectangular Pulse');
+    
+    title('Ideal Rectangular Pulse');
     xlabel('Relative Time (ns)'); ylabel('Normalized Amplitude');
     legend('Location', 'northeast'); ylim([0 1.2]); grid on;
 end
@@ -680,11 +720,12 @@ report(theor_starts, theor_ends, theor_shifts, theor_delta_n, ...
 % This plot represents the demodulated sensing signal.
 % The peaks should align with the 'start_idx' and 'end_idx' defined in Section 3.
 % 
-figure(2)
-set(gcf,  'Name', 'Freq Shift Profile');
-plot(z(1:Nz-M+1), freq_shift / 1e6, 'LineWidth', 1.5)
-grid on; ylabel('Frequency Shift (MHz)'); xlabel('Distance (m)');
-title('Detected Frequency Shift along the Fiber');
+
+% figure(2)
+% set(gcf,  'Name', 'Freq Shift Profile');
+% plot(z(1:Nz-M+1), freq_shift / 1e6, 'LineWidth', 1.5)
+% grid on; ylabel('Frequency Shift (MHz)'); xlabel('Distance (m)');
+% title('Detected Frequency Shift along the Fiber');
 
 
 %%
@@ -693,17 +734,17 @@ title('Detected Frequency Shift along the Fiber');
 % High correlation (close to 1.0) indicates high similarity between 
 % the reference and signal Rayleigh spectra at the shifted frequency.
 
-% figure(3)
-% set(gcf,  'Name', '3D CC (reduced)');
-% [Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
-% surf(Z_mesh, F_mesh, corr_map, 'EdgeColor', 'none')
-% view(35, 45); colormap('jet'); colorbar;
-% xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
-% title('3D Cross-Correlation Map');
-% rotate3d on;
-% xlim([max(210, first_event - 10) min(L, last_event + 10)]);  % Fiber length
-% ylim([-250 250]); % Frequency shift window
-% zlim([-0.5 1]); % Correlation magnitude scale
+figure(3)
+set(gcf,  'Name', '3D CC (reduced)');
+[Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
+surf(Z_mesh, F_mesh, corr_map, 'EdgeColor', 'none')
+view(35, 45); colormap('jet'); colorbar;
+xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)'); zlabel('Correlation');
+title('3D Cross-Correlation Map');
+rotate3d on;
+xlim([max(210, first_event - 10) min(L, last_event + 10)]);  % Fiber length
+ylim([-1500 1500]); % Frequency shift window
+zlim([-0.5 1]); % Correlation magnitude scale
 
 
 %%
@@ -712,23 +753,23 @@ title('Detected Frequency Shift along the Fiber');
 % mathematical peak detection (white line).
 % This visualization is excellent for assessing the Signal-to-Noise Ratio (SNR).
 
-% figure(4)
-% set(gcf, 'Name', '2D C. Peak Tracking'); 
-% [Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
-% contourf(Z_mesh, F_mesh, corr_map, 20, 'LineColor', 'none'); 
-% colormap('jet'); colorbar;
-% hold on;
-% % The white line traces the maximum correlation lag, verifying the algorithm's accuracy
-% plot(z(1:Nz-M+1), freq_shift / 1e6, 'w', 'LineWidth', 1.5); 
-% hold off;
-% xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)');
-% title('2D Correlation Map (Top View with Peak Trace)');
-% % Focus the view on the perturbed regions for better detail
-% xlim([max(0, first_event - 50) min(L, last_event + 50)]); 
-% ylim([-1500 1500]);
+figure(4)
+set(gcf, 'Name', '2D C. Peak Tracking'); 
+[Z_mesh, F_mesh] = meshgrid(z(1:Nz-M+1), lags_freq / 1e6);
+contourf(Z_mesh, F_mesh, corr_map, 20, 'LineColor', 'none'); 
+colormap('jet'); colorbar;
+hold on;
+% The white line traces the maximum correlation lag, verifying the algorithm's accuracy
+plot(z(1:Nz-M+1), freq_shift / 1e6, 'w', 'LineWidth', 1.5); 
+hold off;
+xlabel('Distance (m)'); ylabel('Frequency Lag (MHz)');
+title('2D Correlation Map (Top View with Peak Trace)');
+% Focus the view on the perturbed regions for better detail
+xlim([max(0, first_event - 50) min(L, last_event + 50)]); 
+ylim([-1500 1500]);
 
 
-% %%
+%%
 % % --- FIGURE 4: Summary Overview ---
 % % Combined plot for comparative analysis of spatial and spectral data.
 % figure(5)
@@ -786,7 +827,7 @@ title('Detected Frequency Shift along the Fiber');
 % Visualizes raw versus smoothed frequency shifts alongside thresholds and 
 % positive/negative peak markers.
 figure(7);
-set(gcf, 'Name', 'Event Detection');
+set(gcf, 'Name', 'Peak Detection');
 plot(z_valid, freq_shift/1e6, 'Color', [0.4 0.4 0.4], 'DisplayName', 'Raw shift');
 hold on;
 plot(z_valid, smooth_freq_shift/1e6, 'Color', [0.2 0.6 1.0], 'LineWidth', 1.5, ...

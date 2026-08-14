@@ -28,7 +28,7 @@ function [all_locs, all_pks, threshold] = peak_detection(freq_shift_calib, ...
     % -------------------------------------------------------------------
     %   Events with opposite-sign delta_n produce opposite-sign shifts, so
     %   positive and negative peaks are detected independently.
-    min_peak_dist = round(pert_length/dz); % Minimum inter-peak grid spacing
+    min_peak_dist = round((pert_length * 1.5) / dz); % Minimum inter-peak grid spacing
 
     % Common findpeaks settings:
     %   MinPeakHeight :: rejects all variations below the threshold floor
@@ -40,7 +40,7 @@ function [all_locs, all_pks, threshold] = peak_detection(freq_shift_calib, ...
     peak_opts = { ...
         'MinPeakHeight',      threshold, ...
         'MinPeakDistance',    min_peak_dist, ...
-        'MinPeakProminence',  threshold * 0.3 };
+        'MinPeakProminence',  threshold * 0.9};
 
     [pks_pos, idx_pos] = findpeaks( smooth_freq_shift, peak_opts{:});
     [pks_neg, idx_neg] = findpeaks(-smooth_freq_shift, peak_opts{:});

@@ -77,7 +77,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
         delta_T_exp = temp_variation(delta_n_exp, gamma, eta, n_ave);
         
         % Print individual detected event parameters
-        fprintf('Event %-2d | %-16s | %+-11.2f | %+-9.2e | %+-10.4f\n', ...
+        fprintf('Event %-2d | %-16s | %+-11.2f | %+-9.4e | %+-10.4f\n', ...
             i, loc_str, shift_Hz/1e6, delta_n_exp, delta_T_exp);
     end
     fprintf('%s\n', repmat('-', 1, 68));
@@ -352,7 +352,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
             fprintf('Event %-2d | %+-10.2e | %-12s | %-11s | %-14s\n', i, ...
                 theor_delta_n(i), 'NOT DETECTED', 'N/A', 'N/A');
         else
-            fprintf('Event %-2d | %+-10.2e | %+-12.2e | %-11.2e | %-14.2f\n', ...
+            fprintf('Event %-2d | %+-10.4e | %+-12.4e | %-11.2e | %-14.2f\n', ...
                 i, theor_delta_n(i), dn_exp(i), err_dn_abs(i), err_dn_rel(i));
         end
     end
@@ -373,7 +373,7 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
             fprintf('Event %-2d | %-+10.2e | %-12s | %-11s | %-14s\n', i, ...
                 theor_delta_T(i), 'NOT DETECTED', 'N/A', 'N/A');
         else
-            fprintf('Event %-2d | %+-10.2e | %+-12.2e | %-11.2e | %-14.2f\n', ...
+            fprintf('Event %-2d | %+-10.4f | %+-12.4f | %-11.2e | %-14.2f\n', ...
                 i, theor_delta_T(i), dT_exp(i), err_dT_abs(i), err_dT_rel(i));
         end
     end
