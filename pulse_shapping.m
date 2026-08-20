@@ -40,30 +40,31 @@ end
 window_rc = window_rc_full(1:M) / max(window_rc_full);
 
 % 3. Super-Gaussian (Order N)
-t_sg = linspace(-pulse_width, 2*pulse_width, 2*M);
+pulse_width_ns = pulse_width * 1e9; % 10 ns
+t_sg_ns = linspace(-pulse_width_ns, 2*pulse_width_ns, 2*M); % -10 a 20 ns
+t_center_ns = pulse_width_ns / 2; % 5 ns
 
 figure('Name', 'Pulse Shape Comparison Analysis');
 hold on;
 
-for N = 1:2:10
-    window_sg = sgauss(t_plot - t_center, pulse_width, 1, 0, order_N);
+order_N = [1, 2, 5, 15, 50];
+
+for N = order_N
+    window_sg = sgauss(t_sg_ns - t_center_ns, pulse_width_ns, 1, 0, N);
     window_sg = window_sg / max(window_sg);
-    plot(t_plot_ns, window_sg, 'DisplayName', ['Super-Gaussian (N=' num2str(N) ')']);
+    plot(t_sg_ns, window_sg, 'LineWidth', 1.5, 'DisplayName', ['Super-Gaussian (N=' num2str(N) ')']);
 end
 
-%plot(t_plot_ns, window_rc, 'Linewidth', 2, 'DisplayName', 'RC Filter (Realistic EOM)');
-hold on;
-plot(t_rect_ns, v_rect, 'r-', 'LineWidth', 2, 'DisplayName', 'Ideal Rectangular Pulse');
-
-
+plot(t_rect_ns, v_rect, 'r--', 'LineWidth', 2, 'DisplayName', 'Ideal Rectangular Pulse');
 grid on;
-xlabel('Time (ns)');
-ylabel('Normalized Amplitude');
-title('Comparison of Optical Pulse Shapes');
-legend('Location', 'best');
-ylim([0 1.2]);
-% Espaçamento nas laterais (ex: -1 ns até 11 ns)
-margin = 1; 
-xlim([-margin, (pulse_width * 1e9) + margin]);
+
+xlim([-11, 21]); ylim([0 1.2]); grid on;
+set(gca, 'FontSize', 18, 'LineWidth', 1.5);
+    
+xlabel('Time (ns)', 'FontSize', 18); 
+ylabel('Normalized Amplitude', 'FontSize', 18);
+title('Comparison of Optical Pulse Shapes', 'FontSize', 20, 'FontWeight', 'bold');
+legend('Location', 'northeast', 'FontSize', 10);
 
 hold off;
+
