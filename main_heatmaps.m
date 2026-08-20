@@ -300,7 +300,7 @@ else
 end
 
 timestamp_str = string(datetime('now', 'Format', 'yyyy-MM-dd_HHmmss'));
-out_dir = 'rect_window_plots';
+out_dir = 'rc_window_plots_17082026';
 if ~exist(out_dir, 'dir')
     mkdir(out_dir);
 end
@@ -370,6 +370,8 @@ fprintf('Total Execution Time: %.2f seconds (%.2f minutes)\n', total_duration, t
 fprintf('Average time per simulation: %.3f seconds\n', total_duration/total_sims);
 fprintf('=========================================\n');
 
+%%
+
 % ------------------------------------------------------------------
 % SAVE RAW RESULTS (.mat) — keep before plotting in case of crash
 % ------------------------------------------------------------------
@@ -385,9 +387,10 @@ fprintf('Raw results saved to: %s\n', mat_filename);
 fig8 = figure(8); set(gcf, 'Name', 'Mean Precision Heatmap', 'WindowState', 'maximized');
 h1 = heatmap(std_mult_range, snr_range, prec_map);
 h1.Title = sprintf('Mean Precision (N = %d)', nExec);
-h1.XLabel = 'std\_mult';
-h1.YLabel = 'SNR (dB)';
+h1.XLabel = 'Detection threshold scaling multiplier, k\_mult';
+h1.YLabel = 'Signal-to-Noise Ratio, SNR (dB)';
 h1.Colormap = jet;
+h1.FontSize = 14;   
 h1.ColorLimits = [0 100];
 exportgraphics(fig8, fullfile(out_dir, sprintf('%s_heatmap_precision_mean_N%d_%s.png', ...
     pulse_str, nExec, timestamp_str)), 'Resolution', 300);
@@ -395,19 +398,23 @@ exportgraphics(fig8, fullfile(out_dir, sprintf('%s_heatmap_precision_mean_N%d_%s
 fig9 = figure(9); set(gcf, 'Name', 'Mean Sensitivity Heatmap', 'WindowState', 'maximized');
 h2 = heatmap(std_mult_range, snr_range, rec_map);
 h2.Title = sprintf('Mean Sensitivity / Recall (N = %d)', nExec);
-h2.XLabel = 'std\_mult';
-h2.YLabel = 'SNR (dB)';
+h2.XLabel = 'Detection threshold scaling multiplier, k\_mult';
+h2.YLabel = 'Signal-to-Noise Ratio, SNR (dB)';
 h2.Colormap = jet;
+h2.FontSize = 14;
 h2.ColorLimits = [0 100];
 exportgraphics(fig9, fullfile(out_dir, sprintf('%s_heatmap_recall_mean_N%d_%s.png', ...
     pulse_str, nExec, timestamp_str)), 'Resolution', 300);
 
+%%
+
 fig10 = figure(10); set(gcf, 'Name', 'Mean F1-Score Heatmap', 'WindowState', 'maximized');
 h3 = heatmap(std_mult_range, snr_range, f1_map);
 h3.Title = sprintf('Mean F1-Score (N = %d)', nExec);
-h3.XLabel = 'std\_mult';
-h3.YLabel = 'SNR (dB)';
+h3.XLabel = 'Detection threshold scaling multiplier, k\_mult';
+h3.YLabel = 'Signal-to-Noise Ratio, SNR (dB)';
 h3.Colormap = jet;
+h3.FontSize = 14;
 h3.ColorLimits = [0 100];
 exportgraphics(fig10, fullfile(out_dir, sprintf('%s_heatmap_f1score_mean_N%d_%s.png', ...
     pulse_str, nExec, timestamp_str)), 'Resolution', 300);

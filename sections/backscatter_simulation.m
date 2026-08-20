@@ -92,20 +92,20 @@ if shape_choice == 1
     figure(1); set(gcf, 'Name', 'Pulse Shape');
     
     % Centrar vetor de tempo RC para visualização no intervalo -20 a 20 ns
-    t_rc_ns = linspace(0, 2 * pulse_width * 1e9, 2 * M) - (pulse_width * 1e9); 
+    t_rc_ns = linspace(0, 2 * pulse_width * 1e9, 2 * M); 
     
     plot(t_rc_ns, window_full, 'Color', [0.1 0.2 0.8], 'LineWidth', 3, ...
          'DisplayName', 'RC Pulse Shaping');
     hold on;
     
     % Ideal rectangular pulse
-    t_rect_ns = [-pulse_width*1e9, -pulse_width*1e9, pulse_width*1e9, pulse_width*1e9];
+    t_rect_ns = [0, 0, pulse_width*1e9, pulse_width*1e9];
     v_rect    = [0, 1, 1, 0];
     plot(t_rect_ns, v_rect, 'r--', 'LineWidth', 2.5, 'DisplayName', 'Ideal Rectangular Pulse');
     hold off;
 
     % Ajuste de fontes e eixos
-    xlim([-20, 20]); ylim([0 1.2]); grid on;
+    xlim([-5, 25]); ylim([0 1.2]); grid on;
     set(gca, 'FontSize', 18, 'LineWidth', 1.5); % Aumenta números dos eixos
     
     xlabel('Relative Time (ns)', 'FontSize', 18); 
@@ -118,28 +118,34 @@ elseif shape_choice == 2
     % 4.1.b) SUPER-GAUSSIAN MODEL
     % ---------------------------------------------------------------------
     order_N = 3; % Super-Gaussian order
-    t_sg = linspace(-pulse_width, pulse_width, M);
-    
-    window = sgauss(t_sg, pulse_width, 1, 0, order_N);
+
+    t_sg = linspace(0, pulse_width, M);
+    t_center = pulse_width/2;
+
+    window = sgauss(t_sg - t_center, pulse_width, 1, 0, order_N);
     window = window / max(window); % Normalise peak to 1
 
     % ---------------------------------------------------------------------
     %                               VISUAL CHECK
     % ---------------------------------------------------------------------
     figure(1); set(gcf, 'Name', 'Pulse Shape');
-    
-    plot(t_sg * 1e9, window, 'Color', [0.2 0.2 0.8], 'LineWidth', 3, ...
+
+    t_plot = linspace(-pulse_width, 2*pulse_width, 2*M);
+    window_plot = sgauss(t_plot - t_center, pulse_width, 1, 0, order_N);
+    window_plot = window_plot / max(window_plot);
+
+    plot(t_plot * 1e9, window_plot, 'Color', [0.2 0.2 0.8], 'LineWidth', 3, ...
          'DisplayName', ['Super-Gaussian (N = ' num2str(order_N) ')']);
     hold on;
     
     % Ideal rectangular pulse
-    t_rect_ns = [-pulse_width*1e9, -pulse_width*1e9, pulse_width*1e9, pulse_width*1e9];
+    t_rect_ns = [0, 0, pulse_width*1e9, pulse_width*1e9];
     v_rect    = [0, 1, 1, 0];
     plot(t_rect_ns, v_rect, 'r--', 'LineWidth', 2.5, 'DisplayName', 'Ideal Rectangular Pulse');
     hold off;
 
     % Ajuste de fontes e eixos
-    xlim([-20, 20]); ylim([0 1.2]); grid on;
+    xlim([-15, 25]); ylim([0 1.2]); grid on;
     set(gca, 'FontSize', 18, 'LineWidth', 1.5); % Aumenta números dos eixos
     
     xlabel('Relative Time (ns)', 'FontSize', 18); 
@@ -159,13 +165,13 @@ elseif shape_choice == 3
     % ---------------------------------------------------------------------
     figure(1); set(gcf, 'Name', 'Pulse Shape');
     
-    t_rect_ns = [-pulse_width*1e9, -pulse_width*1e9, pulse_width*1e9, pulse_width*1e9];
+    t_rect_ns = [0, 0, pulse_width*1e9, pulse_width*1e9];
     v_rect    = [0, 1, 1, 0];
     
     plot(t_rect_ns, v_rect, 'r-', 'LineWidth', 3, 'DisplayName', 'Ideal Rectangular Pulse');
 
     % Ajuste de fontes e eixos
-    xlim([-20, 20]); ylim([0 1.2]); grid on;
+    xlim([-10, 20]); ylim([0 1.2]); grid on;
     set(gca, 'FontSize', 18, 'LineWidth', 1.5); % Aumenta números dos eixos
     
     xlabel('Relative Time (ns)', 'FontSize', 18); 
