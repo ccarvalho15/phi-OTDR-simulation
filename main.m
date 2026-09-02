@@ -3,7 +3,7 @@ addpath('functions\');
 addpath('sections\')
 
 % 1. Inicia a gravação no ficheiro desejado
-diary('report_rect_window_12082026.txt');
+diary('rp_window_01092026.txt');
 
 %% =======================================================================
 % 1. SYSTEM CONFIGURATION & WAVEGU2IDE PROPERTIES
@@ -43,14 +43,14 @@ fprintf(['\nPulse shaping selection:     \n' ...
     '   3) Rectangular Pulse\n']);
 shape_choice = input('> Option ');
 
-[z_valid, t_laser, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_all] = ...
+[z_valid, t_laser, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_all, E_ref_raw_calib_all] = ...
     backscatter_simulation(conf, shape_choice, r, n, n_pert);
 %% ========================================================================
 % 6. SPECTRAL SHIFT ESTIMATION VIA CROSS-CORRELATION
 % ========================================================================
 
 [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] = ...
-    spectral_shift_estimation(conf, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_all);
+    spectral_shift_estimation(conf, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_calib_all);
 
 
 %% ========================================================================

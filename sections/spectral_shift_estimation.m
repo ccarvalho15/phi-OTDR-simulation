@@ -1,5 +1,5 @@
 function [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] = ...
-    spectral_shift_estimation(conf, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_all)
+    spectral_shift_estimation(conf, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_calib_all)
 
     %% ========================================================================
     % 6. SPECTRAL SHIFT ESTIMATION VIA CROSS-CORRELATION
@@ -67,7 +67,7 @@ function [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] 
         % Calibration path: correlate two independent realisations of the
         % reference state to estimate the noise-induced shift variance
     
-        I_calib = abs(awgn(E_ref_raw_all(:,k), SNR_dB, 'measured')).^2;
+        I_calib = abs(awgn(E_ref_raw_calib_all(:,k), SNR_dB, 'measured')).^2;
         [cv_c, lags_c] = xcorr(I_calib - mean(I_calib), I_ref - mean(I_ref), 'coeff');
         [~, max_idx_c] = max(cv_c);
         freq_shift_calib(k) = lags_c(max_idx_c) * delta_f;
@@ -87,7 +87,7 @@ function [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] 
     % title('Ideal Spectral Cross-Correlation Map (Noise-Free Baseline)', ...
     %     'FontSize', 18, 'FontWeight', 'bold');
     % rotate3d on;
-    % xlim([z_valid(1) z_valid(end)]); ylim([-1100 1100]); zlim([-0.5 1]);
+    % xlim([200 240]); ylim([-1100 1100]); zlim([-0.5 1]);
     % set(gca, 'Position', [0.12, 0.15, 0.65, 0.72]); % Proporção padrão
     % cb.Position = [0.84, 0.15, 0.025, 0.72];
     % 
@@ -105,7 +105,7 @@ function [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] 
     % title(sprintf('Cross-Correlation Map under Noisy Conditions (SNR = %d dB)', ...
     %     SNR_dB), 'FontSize', 18, 'FontWeight', 'bold');
     % rotate3d on;
-    % xlim([z_valid(1) z_valid(end)]); ylim([-1100 1100]); zlim([-0.5 1]);
+    % xlim([200 240]); ylim([-1100 1100]); zlim([-0.5 1]);
     % set(gca, 'Position', [0.12, 0.15, 0.65, 0.72]); % Proporção padrão
     % cb.Position = [0.84, 0.15, 0.025, 0.72];
 
@@ -124,6 +124,9 @@ function [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] 
     
     smooth_window = M;
     smooth_freq_shift = movmean(freq_shift, smooth_window);
+
+    % smooth_small = movmean(freq_shift, max(1, round(M/2)));
+    % smooth_large = movmean(freq_shift, 2*M);
 
     % % Criação da figura
     % fig7 = figure(7);
@@ -146,6 +149,43 @@ function [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] 
     % title('Distributed Spectral Shift Profile (Raw vs. Smooth)', ...
     %     'FontSize', 18, 'FontWeight', 'bold');
     % legend('Location', 'northeast', 'FontSize', 14);
+    % xlim([205, 240]);
+
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Criação da Figura 8
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % fig8 = figure(8);
+    % set(fig8, 'Name', 'Smoothing Window Trade-off Analysis');
+    % 
+    % % 1. Sinal Bruto (Raw Trace)
+    % plot(z_valid, freq_shift / 1e6, '-', ...
+    %     'LineWidth', 1.0, 'DisplayName', 'Raw Trace', 'Color', [0.7 0.7 0.7]);
+    % hold on;
+    % 
+    % % 2. Suavização Insuficiente (M/2) - Deixa passar speckle
+    % plot(z_valid, smooth_small / 1e6, '--', ...
+    %     'LineWidth', 1.4, 'DisplayName', sprintf('Under-smoothed (M = %d)', max(1, round(M/2))), ...
+    %     'Color', [0.85 0.32 0.09]); % Laranja
+    % 
+    % % 3. Suavização Ideal (M) - Equilibra speckle e resolução espacial
+    % plot(z_valid, smooth_freq_shift / 1e6, '-', ...
+    %     'LineWidth', 2.0, 'DisplayName', sprintf('Optimal (M = %d)', smooth_window), ...
+    %     'Color', [0.00 0.45 0.74]); % Azul principal
+    % 
+    % % 4. Suavização Excessiva (2M) - Alarga as transições dos eventos
+    % plot(z_valid, smooth_large / 1e6, '-.', ...
+    %     'LineWidth', 1.6, 'DisplayName', sprintf('Over-smoothed (M = %d)', 2*M), ...
+    %     'Color', [0.47 0.67 0.19]); % Verde
+    % hold off;
+    % 
+    % % Ajustes Visuais
+    % grid on;
+    % set(gca, 'FontSize', 15, 'LineWidth', 1.3);
+    % xlabel('Distance (m)', 'FontSize', 16);
+    % ylabel('Frequency Shift (MHz)', 'FontSize', 16);
+    % title('Trade-off of Moving-Average Window Size on Spectral Shift Profile', ...
+    %     'FontSize', 17, 'FontWeight', 'bold');
+    % legend('Location', 'northeast', 'FontSize', 13);
     % xlim([205, 240]);
 
 end

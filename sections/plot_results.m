@@ -15,7 +15,7 @@ function plot_results(conf, z_valid, freq_shift, smooth_freq_shift, ...
     last_event  = conf.sensing_zone + (conf.num_events-1) * ...
         (conf.pert_length + conf.spacing) + conf.pert_length;
 
-    output_dir = 'rect_window_04082026'; % Nome da pasta
+    output_dir = 'rp_window_27082026'; % Nome da pasta
     if ~exist(output_dir, 'dir')
         mkdir(output_dir);
     end

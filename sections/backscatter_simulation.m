@@ -1,4 +1,4 @@
-function [z_valid, t_laser, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_all] = ...
+function [z_valid, t_laser, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_all, E_ref_raw_calib_all] = ...
     backscatter_simulation(conf, shape_choice, r, n, n_pert)
 
 %% ========================================================================
@@ -48,7 +48,7 @@ E_ref_id = zeros(Nf, Nz - M + 1); % Ideal (noise-free) reference
 E_sig_id = zeros(Nf, Nz - M + 1); % Ideal (noise-free) perturbed
 E_ref_raw_all = zeros(Nf, Nz - M + 1); % Raw reference before receiver noise
 E_sig_raw_all = zeros(Nf, Nz - M + 1); % Raw perturbed before receiver noise
-
+E_ref_raw_calib_all = zeros(Nf, Nz - M + 1);
 
 
 %% ------------------------------------------------------------------------
@@ -150,7 +150,7 @@ elseif shape_choice == 2
     
     xlabel('Relative Time (ns)', 'FontSize', 18); 
     ylabel('Normalized Amplitude', 'FontSize', 18);
-    title('Super Gaussian Model', 'FontSize', 20, 'FontWeight', 'bold');
+    title('Super Gaussian Model (p=3)', 'FontSize', 20, 'FontWeight', 'bold');
     % legend('Location', 'northeast', 'FontSize', 16);
 
 elseif shape_choice == 3
@@ -245,6 +245,7 @@ for f_idx = 1:Nf
     %   process with diffusion rate proportional to the laser linewidth.
     E_laser = lasercw(t_laser, P_input_dBm, 0, linewidth, shift);
 
+    
     % -------------------------------------------------------------------
     % 5.4 ROUND-TRIP FIBER ATTENUATION (BEER_LAMBERT)
     % -------------------------------------------------------------------
@@ -274,6 +275,16 @@ for f_idx = 1:Nf
     E_ref_raw_all(f_idx, :) = E_ref_raw;
     E_sig_raw_all(f_idx, :) = E_sig_raw;
 
+    % -------------------------------------------------------------------
+    % 5.6 CALIBRATION TRACE — INDEPENDENT PHASE-NOISE REALIZATION
+    % -------------------------------------------------------------------
+    %   Generated AFTER the primary signal (E_ref, E_sig) is finalized,
+    %   so this extra random draw does not shift the noise stream used
+    %   for the primary reference/perturbed fields. Only the calibration
+    %   trace — and therefore the adaptive threshold — is affected.
+    E_laser_calib = lasercw(t_laser, P_input_dBm, 0, linewidth, shift);
+    E_ref_raw_calib = E_ref_conv .* E_laser_calib .* loss_factor;
+    E_ref_raw_calib_all(f_idx, :) = E_ref_raw_calib;
 end
 
 end

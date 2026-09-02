@@ -16,7 +16,7 @@ std_mult_range = 1.5 : 0.2 : 4.5; % 16 points
 
 nSNR  = length(snr_range);
 nMult = length(std_mult_range);
-nExec = 50;                       % iterations per (SNR, std_mult) pair
+nExec = 1;                       % iterations per (SNR, std_mult) pair
 total_sims = nSNR * nMult * nExec;
 
 % ------------------------------------------------------------------
@@ -59,7 +59,7 @@ else
 end
 
 timestamp_str = string(datetime('now', 'Format', 'yyyy-MM-dd_HHmmss'));
-out_dir = 'sg_window_20082026';
+out_dir = 'sg_window_31082026';
 if ~exist(out_dir, 'dir')
     mkdir(out_dir);
 end
@@ -86,11 +86,11 @@ for i = 1:nSNR
         for k = 1:nExec
             sim_count = sim_count + 1;
 
-            [z_valid, t_laser, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_all] = ...
+            [z_valid, t_laser, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_all, E_ref_raw_calib_all] = ...
                 backscatter_simulation(conf_sweep, shape_choice, r, n, n_pert);
 
             [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] = ...
-                spectral_shift_estimation(conf_sweep, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_all);
+                spectral_shift_estimation(conf_sweep, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_calib_all);
 
             [all_locs, all_pks, ~] = peak_detection(freq_shift_calib, ...
                 smooth_freq_shift, z_valid, conf_sweep);
