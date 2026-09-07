@@ -1,0 +1,37 @@
+ ==== PHI-OTDR SIMULATION CONFIGURATION ==== 
+Fiber Length (L):                      240 m
+Spatial Resolution (d):                1.03 m
+Total Spatial Points (Nz)              4800
+Number of Scattering Segments (M):     21
+Sampling Interval (dz):                0.050 m
+Attenuation:                           0.20 dB/km
+Attenuation Coefficient (α):           4.6052e-05 m^-1
+Average Refractive Index (n_ave):      1.456
+Operating Wavelength (lambda_0):       1550 nm
+Central frequency (nu_0)               1.9355e+14 Hz
+Pulse Width:                           10 ns
+Input Power:                           10 mW (10.0 dBm)
+Sweep Range:                           2400 MHz
+Frequency step (Δf):                   10 MHz
+Number of frequencies (Nf):            241
+Laser Linewidth (Δν):                  100.0 kHz
+System SNR:                            12 dB
+Index standard deviation (σ_n):        2.0e-06
+Number of Events:                      5
+Width of each event:                   1.50 m
+Separation between events:             4.00 m
+Sensing Zone Start:                    210 m
+Noise Threshold Multiplier:            3.0x
+Spatial Validation Radius              2.0 m
+
+Pulse shaping selection:     
+   1) RC Filter Model
+   2) Super-Gaussian Model
+   3) Rectangular Pulse
+> Option 1
+
+Pulse shaping selection:     
+   1) RC Filter Model
+   2) Super-Gaussian Model
+   3) Rectangular Pulse
+> Option 

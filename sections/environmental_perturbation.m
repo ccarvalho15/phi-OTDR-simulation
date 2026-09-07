@@ -49,12 +49,12 @@ function [gt, n_pert] = environmental_perturbation(conf, n, magnitudes)
     gt.theor_delta_n = zeros(1, num_events);
     gt.theor_delta_T = zeros(1, num_events);
     
-    fprintf('\n%s\n', repmat('=', 1, 69));
-    fprintf('                     PERTURBATION EVENTS - PHI-OTDR\n');
-    fprintf('%s\n', repmat('=', 1, 69));
-    fprintf('%-8s | %-16s | %-10s | %-9s | %-10s\n', 'Event', 'Location (m)', ...
-        'Shift (MHz)','Delta_n', 'Delta_T (K)');
-    fprintf('%s\n', repmat('-', 1, 69));
+    % fprintf('\n%s\n', repmat('=', 1, 69));
+    % fprintf('                     PERTURBATION EVENTS - PHI-OTDR\n');
+    % fprintf('%s\n', repmat('=', 1, 69));
+    % fprintf('%-8s | %-16s | %-10s | %-9s | %-10s\n', 'Event', 'Location (m)', ...
+    %     'Shift (MHz)','Delta_n', 'Delta_T (K)');
+    % fprintf('%s\n', repmat('-', 1, 69));
     
     for i = 1:num_events
         % Spatial boundaries of event i
@@ -85,12 +85,12 @@ function [gt, n_pert] = environmental_perturbation(conf, n, magnitudes)
         gt.theor_delta_T(i) = delta_T;
     
         loc_str = sprintf('[%.2f; %.2f]', start_pos, end_pos);
-        fprintf('Event %-2d | %-16s | %+-11.2f | %+-9.2e | %+-10.4f\n', ...
-            i, loc_str, shift_MHz, mag, delta_T);
+        % fprintf('Event %-2d | %-16s | %+-11.2f | %+-9.2e | %+-10.4f\n', ...
+        %     i, loc_str, shift_MHz, mag, delta_T);
     
     end
     
     % Superimpose perturbation on baseline index profile
     n_pert = n + delta_n_pert;
-    fprintf('%s\n\n', repmat('-', 1, 69));
+    % fprintf('%s\n\n', repmat('-', 1, 69));
 end

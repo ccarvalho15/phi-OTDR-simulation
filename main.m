@@ -3,7 +3,7 @@ addpath('functions\');
 addpath('sections\')
 
 % 1. Inicia a gravação no ficheiro desejado
-diary('rp_window_01092026.txt');
+diary('blabla.txt');
 
 %% =======================================================================
 % 1. SYSTEM CONFIGURATION & WAVEGU2IDE PROPERTIES

@@ -156,7 +156,7 @@ function [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % fig8 = figure(8);
     % set(fig8, 'Name', 'Smoothing Window Trade-off Analysis');
-    % 
+
     % % 1. Sinal Bruto (Raw Trace)
     % plot(z_valid, freq_shift / 1e6, '-', ...
     %     'LineWidth', 1.0, 'DisplayName', 'Raw Trace', 'Color', [0.7 0.7 0.7]);
@@ -188,4 +188,5 @@ function [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] 
     % legend('Location', 'northeast', 'FontSize', 13);
     % xlim([205, 240]);
 
+    
 end
