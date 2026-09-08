@@ -14,13 +14,6 @@ function plot_results(conf, z_valid, freq_shift, smooth_freq_shift, ...
     first_event = conf.sensing_zone;
     last_event  = conf.sensing_zone + (conf.num_events-1) * ...
         (conf.pert_length + conf.spacing) + conf.pert_length;
-
-    output_dir = 'rp_window_27082026'; % Nome da pasta
-    if ~exist(output_dir, 'dir')
-        mkdir(output_dir);
-    end
-
-    timestamp = string(datetime('now', 'Format', 'yyyy-MM-dd_HHmmss'));
     
     %%
     % --- FIGURE 1: 1D Frequency Shift Profile ---

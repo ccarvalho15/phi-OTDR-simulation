@@ -33,12 +33,17 @@ function [Precision, Sensitivity, F1] = statistical_analysis(gt, conf, ...
         
         if ~isempty(match_idx)
             theor_center = (gt.theor_starts(i) + gt.theor_ends(i)) / 2;
-            [~, local_best] = min(abs(all_locs(match_idx) - theor_center));
+
+            % [~, local_best] = min(abs(all_locs(match_idx) - theor_center));
+            [max_val, local_best] = max(abs(all_pks(match_idx)));
             best_peak_idx = match_idx(local_best);
             
-            TP = TP + 1;
-            % Flag these peaks as successfully matched
-            detected_matched(best_peak_idx) = true;
+            if max_val >= threshold
+                TP = TP + 1;
+                detected_matched(best_peak_idx) = true;
+            else
+                FN = FN + 1;
+            end
         else
             FN = FN + 1;
         end

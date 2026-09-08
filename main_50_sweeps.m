@@ -3,7 +3,7 @@ addpath('functions\');
 addpath('sections\');
 
 %% 1. CONFIGURATION & PARAMETERS
-diary('rc_200_2026.09.06.txt');
+diary('sg_2026.09.07.txt');
 
 conf = get_configuration();
 num_iterations = 50;
@@ -65,7 +65,6 @@ for iter = 1:num_iterations
     for ev = 1:num_events
         theor_start  = gt.theor_starts(ev);
         theor_end    = gt.theor_ends(ev);
-        theor_center = (theor_start + theor_end) / 2;
         
         limit_start = theor_start - match_tolerance;
         limit_end   = theor_end   + match_tolerance;
@@ -74,9 +73,21 @@ for iter = 1:num_iterations
         match_idx = find(all_locs >= limit_start & all_locs <= limit_end);
         
         if ~isempty(match_idx)
+            theor_center = (theor_start + theor_end) / 2;
             % Select the peak spatially closest to the event centroid
-            [~, local_best] = min(abs(all_locs(match_idx) - theor_center));
+            % [~, local_best] = min(abs(all_locs(match_idx) - theor_center));
+            [max_val, local_best] = max(abs(all_pks(match_idx)));
             best_idx = match_idx(local_best);
+
+            if max_val < threshold
+                mc_err_center(iter, ev) = NaN;
+                mc_err_width(iter, ev)  = NaN;
+                mc_err_w_rel(iter, ev)  = NaN;
+                mc_shifts_MHz(iter, ev) = NaN;
+                mc_delta_n(iter, ev)    = NaN;
+                mc_delta_T(iter, ev)    = NaN;
+                continue;
+            end
             
             % True Positive (TP)
             detected_matched(best_idx) = true;
@@ -202,22 +213,33 @@ end
 fprintf('=========================================================================================\n');
 
 %% 5. SAVE RESULTS TO MAT-FILE
-output_dir = 'rc_window_2026.09.06_50s';
+output_dir = 'rp_window_2026.09.07_50s';
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end
+
 timestamp = datestr(now, 'yyyy-mm-dd_HHMMSS');
-filename  = fullfile(output_dir, sprintf('rc_200_report_%s.mat', timestamp));
+filename  = fullfile(output_dir, sprintf('rp_report_%s.mat', timestamp));
+
+% Salva os resultados estatísticos + variáveis espaciais e do último perfil/trace gerado
 save(filename, ...
+    ... % 1. Métricas Estatísticas Monte Carlo (Matrizes N_iter x N_events)
     'mc_shifts_MHz', 'mc_delta_n', 'mc_delta_T', 'mc_detected', ...
     'mc_err_center', 'mc_err_width', 'mc_err_w_rel', ...
-    'theor_shifts_MHz', 'theor_delta_n', 'theor_delta_T', ...
+    ... % 2. Valores Teóricos e Médias Estatísticas
+    'theor_starts', 'theor_ends', 'theor_shifts_MHz', 'theor_delta_n', 'theor_delta_T', ...
     'mean_err_center', 'mean_err_width', 'mean_err_w_rel', ...
     'mean_shifts', 'std_shifts', 'err_shift_rel', ...
     'mean_dn', 'std_dn', 'err_dn_rel', ...
     'mean_dT', 'std_dT', 'err_dT_rel', ...
-    'gt', 'conf', 'num_iterations', 'total_duration');
-fprintf('\nFull statistical report saved successfully to: %s\n', filename);
+    ... % 3. Variáveis de Suporte Espacial e Sinal (Indispensáveis para Figuras/Gráficos)
+    'z_valid', 'freq_shift', 'smooth_freq_shift', 'corr_map', 'lags_freq', ...
+    'all_locs', 'all_pks', 'threshold', ...
+    ... % 4. Estruturas Gerais e Configuração
+    'gt', 'conf', 'num_iterations', 'total_duration', ...
+    '-v7.3');
+
+fprintf('\nRelatório estatístico e dados de simulação salvos com sucesso em: %s\n', filename);
 diary off;
 
 %% ========================================================================
@@ -236,10 +258,13 @@ function [idx_start, idx_end] = find_event_bounds(smooth_freq_shift, idx_peak, t
     sign_peak = sign(smooth_freq_shift(idx_peak));
     idx_start = idx_peak;
     
+    peak_val = abs(smooth_freq_shift(idx_peak));
+    cutoff = max(threshold, 0.3 * peak_val);
+    
     % Regress backward down the spatial trace until the frequency shift 
     % drops below 30% of the target noise floor threshold
     while idx_start > 1 && ...
-            sign_peak * smooth_freq_shift(idx_start) > threshold
+            sign_peak * smooth_freq_shift(idx_start) > cutoff
         idx_start = idx_start - 1;
     end
     
@@ -247,7 +272,7 @@ function [idx_start, idx_end] = find_event_bounds(smooth_freq_shift, idx_peak, t
     % drops below 30% of the target noise floor threshold
     idx_end = idx_peak;
     while idx_end < N && ...
-            sign_peak * smooth_freq_shift(idx_end) > threshold
+            sign_peak * smooth_freq_shift(idx_end) > cutoff
         idx_end = idx_end + 1;
     end
 end

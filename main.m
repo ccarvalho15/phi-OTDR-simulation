@@ -3,7 +3,7 @@ addpath('functions\');
 addpath('sections\')
 
 % 1. Inicia a gravação no ficheiro desejado
-diary('blabla.txt');
+diary('rp_2026.09.08_imagens.txt');
 
 %% =======================================================================
 % 1. SYSTEM CONFIGURATION & WAVEGU2IDE PROPERTIES
@@ -70,6 +70,26 @@ report(gt.theor_starts, gt.theor_ends, gt.theor_shifts, gt.theor_delta_n, ...
     gt.theor_delta_T, all_locs, all_pks, z_valid, smooth_freq_shift, ...
     threshold, conf.gamma, conf.eta, conf.n_ave, conf.nu0, ...
     conf.pert_length, conf.match_tolerance)
+
+%%
+output_dir = 'rp_window_2026.09.08';
+if ~exist(output_dir, 'dir')
+    mkdir(output_dir);
+end
+
+timestamp = string(datetime('now', 'Format', 'yyyy-MM-dd_HHmmss'));
+mat_filename = fullfile(output_dir, sprintf('simulation_results_%s.mat', timestamp));
+
+% Salva todo o workspace no ficheiro .mat
+save(mat_filename, ...
+     'conf', 'gt', 'z_valid', ...
+     'freq_shift', 'smooth_freq_shift', ...
+     'corr_map', 'lags_freq', ...
+     'all_locs', 'all_pks', 'threshold', ...
+     'E_ref', 'E_sig', 'E_ref_id', 'E_sig_id', ...
+     '-v7.3');
+
+fprintf('\nDados salvos com sucesso em: %s\n', mat_filename);
 
 %% ========================================================================
 % 9. DATA VISUALISATION

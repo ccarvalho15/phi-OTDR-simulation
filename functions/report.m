@@ -113,15 +113,21 @@ function report(theor_starts, theor_ends, theor_shifts, theor_delta_n, theor_del
         
         if ~isempty(match_idx)
             theor_center = (theor_starts(i) + theor_ends(i)) / 2;
-            [~, local_best] = min(abs(all_locs(match_idx) - theor_center));
+            % [~, local_best] = min(abs(all_locs(match_idx) - theor_center));
+            [max_val, local_best] = max(abs(all_pks(match_idx)));
             best_peak_idx = match_idx(local_best);
             
-            TP = TP + 1;
-            % Flag these peaks as successfully matched
-            detected_matched(best_peak_idx) = true;
-            fprintf(['TP (Event %d at [%.2f; %.2f] m) :: DETECTED at peak ' ...
-                '%.2f m\n'], i, theor_starts(i), theor_ends(i), ...
-                all_locs(best_peak_idx));
+            if max_val >= threshold
+                TP = TP + 1;
+                detected_matched(best_peak_idx) = true;
+                fprintf(['TP (Event %d at [%.2f; %.2f] m) :: DETECTED at peak ' ...
+                    '%.2f m\n'], i, theor_starts(i), theor_ends(i), ...
+                    all_locs(best_peak_idx));
+            else
+                FN = FN + 1;
+                fprintf(['FN (Event %d at [%.2f; %.2f] m) :: NOT DETECTED by ' ...
+                    'the sensor (below threshold)\n'], i, theor_starts(i), theor_ends(i));
+            end
         else
             FN = FN + 1;
             fprintf(['FN (Event %d at [%.2f; %.2f] m) :: NOT DETECTED by ' ...
@@ -395,11 +401,14 @@ function [idx_start, idx_end] = find_event_bounds(smooth_freq_shift, idx_peak, t
     N = length(smooth_freq_shift);
     sign_peak = sign(smooth_freq_shift(idx_peak));
     idx_start = idx_peak;
+
+    peak_val = abs(smooth_freq_shift(idx_peak));
+    cutoff = max(threshold, 0.3 * peak_val);
     
     % Regress backward down the spatial trace until the frequency shift 
     % drops below 30% of the target noise floor threshold
     while idx_start > 1 && ...
-            sign_peak * smooth_freq_shift(idx_start) > threshold
+            sign_peak * smooth_freq_shift(idx_start) > cutoff
         idx_start = idx_start - 1;
     end
     
@@ -407,7 +416,7 @@ function [idx_start, idx_end] = find_event_bounds(smooth_freq_shift, idx_peak, t
     % drops below 30% of the target noise floor threshold
     idx_end = idx_peak;
     while idx_end < N && ...
-            sign_peak * smooth_freq_shift(idx_end) > threshold
+            sign_peak * smooth_freq_shift(idx_end) > cutoff
         idx_end = idx_end + 1;
     end
 end
