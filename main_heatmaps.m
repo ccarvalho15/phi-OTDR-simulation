@@ -129,9 +129,7 @@ fprintf('Total Execution Time: %.2f seconds (%.2f minutes)\n', total_duration, t
 fprintf('Average time per simulation: %.3f seconds\n', total_duration/total_sims);
 fprintf('=========================================\n');
 
-%%
-
-% ------------------------------------------------------------------
+%% ------------------------------------------------------------------
 % SAVE RAW RESULTS (.mat) — keep before plotting in case of crash
 % ------------------------------------------------------------------
 mat_filename = fullfile(out_dir, sprintf('%s_sweep_results_N%d_%s.mat', ...
@@ -177,10 +175,6 @@ exportgraphics(fig10, fullfile(out_dir, sprintf('%s_heatmap_f1score_mean_N%d_%s.
     pulse_str, nExec, timestamp_str)), 'Resolution', 300);
 
 %% --- Standard deviation (run-to-run variability) heatmaps ---
-% These are the key added value of the multi-iteration study relative to
-% the single-run sweep: they show where the system's performance is
-% stable vs. where it is highly sensitive to the specific noise
-% realization.
 
 fig11 = figure(11); set(gcf, 'Name', 'Precision Std Dev Heatmap', 'WindowState', 'maximized');
 h4 = heatmap(std_mult_range, snr_range, prec_std_map);

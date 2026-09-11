@@ -3,7 +3,7 @@ addpath('functions\');
 addpath('sections\');
 
 %% 1. CONFIGURATION & PARAMETERS
-diary('sg_2026.09.07.txt');
+diary('sg_2026.09.10_5.txt');
 
 conf = get_configuration();
 num_iterations = 50;
@@ -26,7 +26,7 @@ magnitudes = [+5.8968e-6;   % +0.6 °C
               -9.8280e-7;   % -0.1 °C
               +6.8796e-6];  % +0.7 °C
 
-% Spatial Localization Metrics Storage Matrices
+% Spatial localization metrics storage matrices
 mc_err_center = zeros(num_iterations, num_events);
 mc_err_width  = zeros(num_iterations, num_events);
 mc_err_w_rel  = zeros(num_iterations, num_events);
@@ -39,7 +39,7 @@ mc_detected   = false(num_iterations, num_events);
 
 fprintf('--- Starting Simulation (%d Iterations) ---\n\n', num_iterations);
 
-%% 2. MONTE CARLO LOOP
+%% 2. LOOP
 main_tic = tic;
 for iter = 1:num_iterations
     % a) Stochastic Rayleigh Profile and Environmental Model
@@ -103,7 +103,7 @@ for iter = 1:num_iterations
             z_end   = z_valid(idx_end);
             exp_width = z_end - z_start;
             
-            % Spatial Metrics Calculation
+            % Spatial metrics calculation
             mc_err_center(iter, ev) = exp_peak_loc - theor_center;
             mc_err_width(iter, ev)  = exp_width - conf.pert_length;
             mc_err_w_rel(iter, ev) = (mc_err_width(iter, ev) / conf.pert_length) * 100;
@@ -112,7 +112,7 @@ for iter = 1:num_iterations
             shift_Hz = all_pks(best_idx);
             mc_shifts_MHz(iter, ev) = shift_Hz / 1e6;
             
-            % Physical Conversions: Delta_n and Delta_T
+            % Physical conversions: Delta_n and Delta_T
             dn_exp = (shift_Hz * conf.n_ave) / conf.nu0;
             dT_exp = temp_variation(dn_exp, conf.gamma, conf.eta, conf.n_ave);
             
@@ -128,7 +128,7 @@ for iter = 1:num_iterations
         end
     end
     
-    % --- Progress Tracking & ETA ---
+    % Progress Tracking & ETA
     if rem(iter, 10) == 0 || iter == num_iterations
         elapsed = toc(main_tic);
         eta_min = (elapsed / iter) * (num_iterations - iter) / 60;
@@ -145,12 +145,12 @@ theor_shifts_MHz = gt.theor_shifts;
 theor_delta_n    = gt.theor_delta_n;
 theor_delta_T    = gt.theor_delta_T;
 
-% Spatial Metrics Statistics
+% Spatial metrics statistics
 mean_err_center = mean(mc_err_center, 1, 'omitnan');
 mean_err_width  = mean(mc_err_width, 1, 'omitnan');
 mean_err_w_rel  = mean(mc_err_w_rel, 1, 'omitnan');
 
-% Physical Parameters Statistics
+% Physical parameters statistics
 mean_shifts = mean(mc_shifts_MHz, 1, 'omitnan');
 std_shifts  = std(mc_shifts_MHz, 0, 1, 'omitnan');
 err_shift_rel = abs(mean_shifts - theor_shifts_MHz) ./ abs(theor_shifts_MHz) * 100;
@@ -200,11 +200,11 @@ for ev = 1:num_events
         ev, theor_delta_n(ev), mean_dn(ev), std_dn(ev), err_dn_rel(ev));
 end
 
-% TABLE 4: TEMPERATURE VARIATION (Delta T in K)
+% TABLE 4: TEMPERATURE VARIATION (Delta T in ºC)
 fprintf('\n=========================================================================================\n');
 fprintf('                      COMPARISON TABLE - TEMPERATURE VARIATION (DELTA T)\n');
 fprintf('=========================================================================================\n');
-fprintf('%-8s | %-17s | %-14s | %-13s | %-15s\n', 'Event', 'Theoretical (K)', 'Mean (K)', 'Std Dev', 'Rel. Error (%)');
+fprintf('%-8s | %-17s | %-14s | %-13s | %-15s\n', 'Event', 'Theoretical (ºC)', 'Mean (ºC)', 'Std Dev', 'Rel. Error (%)');
 fprintf('-----------------------------------------------------------------------------------------\n');
 for ev = 1:num_events
     fprintf('Event %-2d | %+-17.4f | %+-14.4f | %-13.4f | %-15.2f%%\n', ...
@@ -213,37 +213,33 @@ end
 fprintf('=========================================================================================\n');
 
 %% 5. SAVE RESULTS TO MAT-FILE
-output_dir = 'rp_window_2026.09.07_50s';
+output_dir = 'sg_window_2026.09.10_5_50s';
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end
 
 timestamp = datestr(now, 'yyyy-mm-dd_HHMMSS');
-filename  = fullfile(output_dir, sprintf('rp_report_%s.mat', timestamp));
+filename  = fullfile(output_dir, sprintf('sg_report_%s.mat', timestamp));
 
-% Salva os resultados estatísticos + variáveis espaciais e do último perfil/trace gerado
+% Save statistical results + spatial variables and last generated profile/trace
 save(filename, ...
-    ... % 1. Métricas Estatísticas Monte Carlo (Matrizes N_iter x N_events)
     'mc_shifts_MHz', 'mc_delta_n', 'mc_delta_T', 'mc_detected', ...
     'mc_err_center', 'mc_err_width', 'mc_err_w_rel', ...
-    ... % 2. Valores Teóricos e Médias Estatísticas
     'theor_starts', 'theor_ends', 'theor_shifts_MHz', 'theor_delta_n', 'theor_delta_T', ...
     'mean_err_center', 'mean_err_width', 'mean_err_w_rel', ...
     'mean_shifts', 'std_shifts', 'err_shift_rel', ...
     'mean_dn', 'std_dn', 'err_dn_rel', ...
     'mean_dT', 'std_dT', 'err_dT_rel', ...
-    ... % 3. Variáveis de Suporte Espacial e Sinal (Indispensáveis para Figuras/Gráficos)
     'z_valid', 'freq_shift', 'smooth_freq_shift', 'corr_map', 'lags_freq', ...
     'all_locs', 'all_pks', 'threshold', ...
-    ... % 4. Estruturas Gerais e Configuração
     'gt', 'conf', 'num_iterations', 'total_duration', ...
     '-v7.3');
 
-fprintf('\nRelatório estatístico e dados de simulação salvos com sucesso em: %s\n', filename);
+fprintf('\nStatistical report and simulation data successfully saved to: %s\n', filename);
 diary off;
 
 %% ========================================================================
-% HERLPER FUNCTIONS
+% HELPER FUNCTIONS
 % ========================================================================
 function [idx_start, idx_end] = find_event_bounds(smooth_freq_shift, idx_peak, threshold)
 % Dynamic edge-tracking algorithm via adaptive attenuation search.

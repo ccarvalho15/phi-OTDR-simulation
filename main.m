@@ -3,7 +3,7 @@ addpath('functions\');
 addpath('sections\')
 
 % 1. Inicia a gravação no ficheiro desejado
-diary('rp_2026.09.08_imagens.txt');
+diary('blablabla.txt');
 
 %% =======================================================================
 % 1. SYSTEM CONFIGURATION & WAVEGU2IDE PROPERTIES
@@ -49,7 +49,7 @@ shape_choice = input('> Option ');
 % 6. SPECTRAL SHIFT ESTIMATION VIA CROSS-CORRELATION
 % ========================================================================
 
-[freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] = ...
+[freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, corr_map_id, lags_freq] = ...
     spectral_shift_estimation(conf, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_calib_all);
 
 
@@ -72,7 +72,7 @@ report(gt.theor_starts, gt.theor_ends, gt.theor_shifts, gt.theor_delta_n, ...
     conf.pert_length, conf.match_tolerance)
 
 %%
-output_dir = 'rp_window_2026.09.08';
+output_dir = 'rp_window_2026.09.09';
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end
@@ -84,7 +84,7 @@ mat_filename = fullfile(output_dir, sprintf('simulation_results_%s.mat', timesta
 save(mat_filename, ...
      'conf', 'gt', 'z_valid', ...
      'freq_shift', 'smooth_freq_shift', ...
-     'corr_map', 'lags_freq', ...
+     'corr_map', 'corr_map_id', 'lags_freq', ...
      'all_locs', 'all_pks', 'threshold', ...
      'E_ref', 'E_sig', 'E_ref_id', 'E_sig_id', ...
      '-v7.3');

@@ -95,7 +95,7 @@ if shape_choice == 1
     t_rc_ns = linspace(0, 2 * pulse_width * 1e9, 2 * M); 
     
     plot(t_rc_ns, window_full, 'Color', [0.1 0.2 0.8], 'LineWidth', 3, ...
-         'DisplayName', 'RC Pulse Shaping');
+         'DisplayName', 'RC Pulse Shaping (f_c = 100 MHz)');
     hold on;
     
     % Ideal rectangular pulse
@@ -106,12 +106,12 @@ if shape_choice == 1
 
     % Ajuste de fontes e eixos
     xlim([-5, 25]); ylim([0 1.2]); grid on;
-    set(gca, 'FontSize', 18, 'LineWidth', 1.5); % Aumenta números dos eixos
+    set(gca, 'FontSize', 20, 'LineWidth', 1.5); % Aumenta números dos eixos
     
-    xlabel('Relative Time (ns)', 'FontSize', 18); 
-    ylabel('Normalized Amplitude', 'FontSize', 18);
-    title('RC Pulse Shaping (fc = 100 MHz)', 'FontSize', 20, 'FontWeight', 'bold');
-    % legend('Location', 'northeast', 'FontSize', 16);
+    xlabel('Relative Time (ns)', 'FontSize', 20); 
+    ylabel('Normalized Amplitude', 'FontSize', 20);
+    title('RC Low-Pass Filtered Pulse Shaping', 'FontSize', 22, 'FontWeight', 'bold');
+    legend('Location', 'northeast', 'FontSize', 15);
 
 elseif shape_choice == 2
     % ---------------------------------------------------------------------
@@ -135,7 +135,7 @@ elseif shape_choice == 2
     window_plot = window_plot / max(window_plot);
 
     plot(t_plot * 1e9, window_plot, 'Color', [0.2 0.2 0.8], 'LineWidth', 3, ...
-         'DisplayName', ['Super-Gaussian (N = ' num2str(order_N) ')']);
+         'DisplayName', ['Super-Gaussian (p = ' num2str(order_N) ')']);
     hold on;
     
     % Ideal rectangular pulse
@@ -146,12 +146,12 @@ elseif shape_choice == 2
 
     % Ajuste de fontes e eixos
     xlim([-15, 25]); ylim([0 1.2]); grid on;
-    set(gca, 'FontSize', 18, 'LineWidth', 1.5); % Aumenta números dos eixos
+    set(gca, 'FontSize', 20, 'LineWidth', 1.5); % Aumenta números dos eixos
     
-    xlabel('Relative Time (ns)', 'FontSize', 18); 
-    ylabel('Normalized Amplitude', 'FontSize', 18);
-    title('Super Gaussian Model (p=3)', 'FontSize', 20, 'FontWeight', 'bold');
-    % legend('Location', 'northeast', 'FontSize', 16);
+    xlabel('Relative Time (ns)', 'FontSize', 20); 
+    ylabel('Normalized Amplitude', 'FontSize', 20);
+    title('Super Gaussian Pulse Shapping', 'FontSize', 22, 'FontWeight', 'bold');
+    legend('Location', 'northeast', 'FontSize', 15);
 
 elseif shape_choice == 3
     % -------------------------------------------------------------------------
@@ -171,7 +171,7 @@ elseif shape_choice == 3
     plot(t_rect_ns, v_rect, 'r-', 'LineWidth', 3, 'DisplayName', 'Ideal Rectangular Pulse');
 
     % Ajuste de fontes e eixos
-    xlim([-10, 20]); ylim([0 1.2]); grid on;
+    xlim([-11, 21]); ylim([0 1.2]); grid on;
     set(gca, 'FontSize', 18, 'LineWidth', 1.5); % Aumenta números dos eixos
     
     xlabel('Relative Time (ns)', 'FontSize', 18); 
