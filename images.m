@@ -17,10 +17,10 @@ ax = gca;
 set(ax, 'FontSize', 20, 'LineWidth', 0.8);
 xlabel('Distance (m)', 'FontSize', 20); 
 ylabel('Frequency Shift (MHz)', 'FontSize', 20);
-title('Distributed Frequency Shift Trace Along Sensing Fiber', ...
-    'FontSize', 22, 'FontWeight', 'bold');
+%title('Distributed Frequency Shift Trace Along Sensing Fiber', ...
+    %'FontSize', 22, 'FontWeight', 'bold');
 
-xlim([0 245]);
+xlim([207 237]);
 ylim([-1100 1100]);
 grid on;
 
@@ -80,10 +80,10 @@ for n = 1:length(locs_neg)
 end
 hold off;
 set(gca, 'FontSize', 20, 'LineWidth', 1.2, 'Box', 'on', 'TickDir', 'in');
-xlabel('Distance (m)', 'FontSize', 20, 'FontWeight', 'bold'); 
-ylabel('Frequency Shift (MHz)', 'FontSize', 20, 'FontWeight', 'bold');
-title('Distributed Spectral Shift Event Identification via Threshold Detection', ...
-    'FontSize', 22, 'FontWeight', 'bold');
+xlabel('Distance (m)', 'FontSize', 20); 
+ylabel('Frequency Shift (MHz)', 'FontSize', 20);
+% title('Distributed Spectral Shift Event Identification via Threshold Detection', ...
+%     'FontSize', 22, 'FontWeight', 'bold');
 legend('Location', 'southeast', 'FontSize', 15); 
 grid on; 
 xlim([207 240]); 
@@ -111,8 +111,8 @@ for k = 1:size(views, 1)
     xlabel('Distance (m)', 'FontSize', 25);
     ylabel('Frequency Lag (MHz)', 'FontSize', 25);
     zlabel('Correlation', 'FontSize', 25);
-    title(sprintf('Cross-Correlation Surface Map — %s', views{k,2}), ...
-        'FontSize', 30, 'FontWeight', 'bold');
+    % title(sprintf('Cross-Correlation Surface Map — %s', views{k,2}), ...
+        % 'FontSize', 30, 'FontWeight', 'bold');
     xlim([0 240]);
     ylim([-1100 1100]);
     zlim([-0.5 1]);
@@ -210,6 +210,21 @@ SNR_dB = conf.SNR_dB;
 z = conf.z;
 z_valid = z(1 : (Nz - M + 1));
 
+% 1. Criar o vetor nulo para o Ground Truth contínuo
+true_freq_shift_full = zeros(1, Nz);
+
+% 2. Preencher com os desvios teóricos exatos de cada evento (em Hz)
+for i = 1:conf.num_events
+    start_idx = max(1, round(gt.theor_starts(i) / conf.dz));
+    end_idx   = min(conf.Nz, round(gt.theor_ends(i) / conf.dz));
+    true_freq_shift_full(start_idx:end_idx) = gt.theor_shifts(i) * 1e6; % Converte MHz para Hz
+end
+
+% 3. Truncar para alinhar com a dimensão de z_valid (Nz - M + 1)
+true_freq_shift = true_freq_shift_full(1 : (conf.Nz - conf.M + 1));
+
+
+
 % =========================================================================
 % FIGURE 8: SMOOTHING WINDOW COMPARISON
 % =========================================================================
@@ -219,27 +234,31 @@ smooth_small = movmean(freq_shift, max(1, round(M/2)));
 smooth_large = movmean(freq_shift, 2*M);
 fig8 = figure(8);
 set(fig8, 'Name', 'Smoothing Window Trade-off Analysis');
+z_gt = z_valid - (conf.M * conf.dz) / 2;
+
 plot(z_valid, freq_shift / 1e6, '-', ...
-    'LineWidth', 1.0, 'DisplayName', 'Raw Trace', 'Color', [0.7 0.7 0.7]);
-hold on;
+    'LineWidth', 2.5, 'DisplayName', 'Raw Trace', 'Color', [0.7 0.7 0.7]);
+hold on
+plot(z_gt, true_freq_shift / 1e6, 'k--', ...
+    'LineWidth', 2.5, 'DisplayName', 'Ground Truth');
 plot(z_valid, smooth_small / 1e6, '--', ...
-    'LineWidth', 1.4, 'DisplayName', sprintf('Under-smoothed (W = %d)', max(1, round(M/2))), ...
+    'LineWidth', 2.5, 'DisplayName', sprintf('Under-smoothed (W = %d)', max(1, round(M/2))), ...
     'Color', [0.85 0.32 0.09]); % Orange
-plot(z_valid, smooth_freq_shift / 1e6, '-', ...
-    'LineWidth', 2.0, 'DisplayName', sprintf('Optimal (W = %d)', smooth_window), ...
+plot(z_valid, smooth_freq_shift / 1e6, '-.', ...
+    'LineWidth',2.5, 'DisplayName', sprintf('Optimal (W = %d)', smooth_window), ...
     'Color', [0.00 0.45 0.74]); % Primary Blue
-plot(z_valid, smooth_large / 1e6, '-.', ...
-    'LineWidth', 1.6, 'DisplayName', sprintf('Over-smoothed (W = %d)', 2*M), ...
+plot(z_valid, smooth_large / 1e6, '-', ...
+    'LineWidth', 2.5, 'DisplayName', sprintf('Over-smoothed (W = %d)', 2*M), ...
     'Color', [0.47 0.67 0.19]); % Green
 hold off;
 grid on;
-set(gca, 'FontSize', 15, 'LineWidth', 1.3);
-xlabel('Distance (m)', 'FontSize', 16);
-ylabel('Frequency Shift (MHz)', 'FontSize', 16);
-title('Trade-off of Moving-Average Window Size on Spectral Shift Profile', ...
-    'FontSize', 17, 'FontWeight', 'bold');
-legend('Location', 'northeast', 'FontSize', 13);
-xlim([205, 240]);
+set(gca, 'FontSize', 20, 'LineWidth', 1.3);
+xlabel('Distance (m)', 'FontSize', 20);
+ylabel('Frequency Shift (MHz)', 'FontSize', 20);
+%title('Trade-off of Moving-Average Window Size on Spectral Shift Profile', ...
+    %'FontSize', 17, 'FontWeight', 'bold');
+legend('Location', 'southeast', 'FontSize', 16);
+xlim([210, 226]);
 
 %% HEATMAPS -- LOAD SECOND .MAT FILE
 clear; clc; close all;
@@ -263,6 +282,7 @@ h1.FontSize = 25;
 h1.ColorLimits = [0 100];
 h1.CellLabelColor = 'none';
 h1.GridVisible = 'off';
+h1.YDisplayData = flip(h1.YDisplayData); % Inverte a ordem do Eixo Y
 
 %%
 fig9 = figure(9); set(gcf, 'Name', 'Mean Sensitivity Heatmap', 'WindowState', 'maximized');
@@ -285,6 +305,7 @@ h3.FontSize = 25;
 h3.ColorLimits = [0 100];
 h3.CellLabelColor = 'none';
 h3.GridVisible = 'off';
+h3.YDisplayData = flip(h3.YDisplayData); % Inverte a ordem do Eixo Y
 
 %%
 fig11 = figure(11); set(gcf, 'Name', 'Precision Std Dev Heatmap', 'WindowState', 'maximized');
@@ -296,6 +317,7 @@ h4.Colormap = parula;
 h4.FontSize = 25;
 h4.CellLabelColor = 'none';
 h4.GridVisible = 'off';
+h4.YDisplayData = flip(h4.YDisplayData); % Inverte a ordem do Eixo Y
 
 %%
 fig12 = figure(12); set(gcf, 'Name', 'Sensitivity Std Dev Heatmap', 'WindowState', 'maximized');
@@ -316,3 +338,38 @@ h6.Colormap = parula;
 h6.FontSize = 25;
 h6.CellLabelColor = 'none';
 h6.GridVisible = 'off';
+h6.YDisplayData = flip(h6.YDisplayData); % Inverte a ordem do Eixo Y
+
+%%
+
+%%
+addpath('functions\');
+addpath('sections\')
+
+% 1. Carregar configurações e perfil da fibra
+conf = get_configuration();
+[r, n] = rayleigh_profile(conf);
+
+% Para esta figura, não precisamos de perturbação
+n_pert = n; 
+
+% 2. Executar a simulação de retroespalhamento
+shape_choice = 3; % Impulso retangular ideal
+[z_valid, ~, ~, ~, ~, ~, E_ref_raw_all, ~] = ...
+    backscatter_simulation(conf, shape_choice, r, n, n_pert);
+
+% 3. Extrair a intensidade |E(z)|^2 para uma única frequência ótica (ex: frequência central)
+f_idx = round(conf.Nf / 2); % Índice da frequência central
+E_z = E_ref_raw_all(f_idx, :); % Campo elétrico ao longo de z
+intensity = abs(E_z).^2; % Intensidade |E(z)|^2
+
+% 4. Gerar o gráfico do Traço de Rayleigh
+fig50 = figure(50);
+set(fig50, 'Name', 'Rayleigh Backscatter Trace');
+set(gca, 'FontSize', 20, 'LineWidth', 1.3);
+plot(z_valid, intensity, 'LineWidth', 1.2, 'Color', [0.0 0.45 0.74]);
+grid on;
+xlabel('Position along fiber z (m)', 'FontSize', 20);
+ylabel('Optical Intensity |E(z)|^2 (a.u.)', 'FontSize', 20);
+%title('Rayleigh Backscatter Trace along Fiber', 'FontSize', 22, 'FontWeight', 'bold');
+xlim([0 conf.L]);
