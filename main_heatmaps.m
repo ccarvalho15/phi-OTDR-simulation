@@ -11,12 +11,12 @@ addpath('sections\')
 % to the single-run heatmaps. Reduce the grid resolution below (e.g.
 % snr_range = 8:2:18, std_mult_range = 1.5:0.5:4.5) if runtime becomes
 % impractical -- just be explicit about it in the thesis text if you do.
-snr_range      = 8 : 1 : 18;      % dB, 11 points
-std_mult_range = 1.5 : 0.2 : 4.5; % 16 points
+snr_range      = 6 : 2 : 20;      % dB, 11 points
+std_mult_range = 1 : 2: 20; % 16 points
 
 nSNR  = length(snr_range);
 nMult = length(std_mult_range);
-nExec = 1;                       % iterations per (SNR, std_mult) pair
+nExec = 50;                       % iterations per (SNR, std_mult) pair
 total_sims = nSNR * nMult * nExec;
 
 % ------------------------------------------------------------------
@@ -59,7 +59,7 @@ else
 end
 
 timestamp_str = string(datetime('now', 'Format', 'yyyy-MM-dd_HHmmss'));
-out_dir = 'sg_window_31082026';
+out_dir = '16092026_v2';
 if ~exist(out_dir, 'dir')
     mkdir(out_dir);
 end
@@ -92,10 +92,11 @@ for i = 1:nSNR
             [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, lags_freq] = ...
                 spectral_shift_estimation(conf_sweep, E_ref, E_sig, E_ref_id, E_sig_id, E_ref_raw_calib_all);
 
-            [all_locs, all_pks, ~] = peak_detection(freq_shift_calib, ...
+            [all_locs, all_pks, threshold] = peak_detection(freq_shift_calib, ...
                 smooth_freq_shift, z_valid, conf_sweep);
 
-            [Precision, Sensitivity, F1] = statistical_analysis(gt, conf_sweep, all_locs);
+            [Precision, Sensitivity, F1] = statistical_analysis(gt, conf_sweep, ...
+                all_locs, all_pks, threshold);
 
             prec_runs(k) = Precision;
             rec_runs(k)  = Sensitivity;

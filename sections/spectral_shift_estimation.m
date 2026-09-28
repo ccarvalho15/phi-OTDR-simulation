@@ -42,8 +42,10 @@ function [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, corr_map_id
     
     for k = 1:Nz-M+1
         % Intensity spectra (power spectral density approximation)
-        I_ref = abs(E_ref(:,k)).^2;
-        I_sig = abs(E_sig(:,k)).^2;
+        % I_ref = abs(E_ref(:,k)).^2;
+        % I_sig = abs(E_sig(:,k)).^2;
+        I_ref = E_ref(:,k);
+        I_sig = E_sig(:,k);
         
         % Normalised cross-correlation of zero-mean spectra
         % [cv, lags] = xcorr(I_sig - mean(I_sig), I_ref - mean(I_ref), 'coeff');
@@ -55,8 +57,10 @@ function [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, corr_map_id
         freq_shift(k) = lags(max_idx) * delta_f; 
 
         % IDEAL
-        I_ref_id = abs(E_ref_id(:, k)).^2;
-        I_sig_id = abs(E_sig_id(:, k)).^2;
+        % I_ref_id = abs(E_ref_id(:, k)).^2;
+        % I_sig_id = abs(E_sig_id(:, k)).^2;
+        I_ref_id = E_ref_id(:,k);
+        I_sig_id = E_sig_id(:,k);
         
         [cv_id, ~] = xcorr(I_ref_id - mean(I_ref_id), I_sig_id - mean(I_sig_id), 'coeff');
         corr_map_id(:, k) = cv_id;
@@ -67,7 +71,7 @@ function [freq_shift, freq_shift_calib, smooth_freq_shift, corr_map, corr_map_id
         % Calibration path: correlate two independent realisations of the
         % reference state to estimate the noise-induced shift variance
     
-        I_calib = abs(awgn(E_ref_raw_calib_all(:,k), SNR_dB, 'measured')).^2;
+        I_calib = awgn(abs(E_ref_raw_calib_all(:,k)).^2, SNR_dB, 'measured');
         [cv_c, lags_c] = xcorr(I_calib - mean(I_calib), I_ref - mean(I_ref), 'coeff');
         [~, max_idx_c] = max(cv_c);
         freq_shift_calib(k) = lags_c(max_idx_c) * delta_f;

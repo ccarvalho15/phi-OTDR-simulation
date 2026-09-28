@@ -3,7 +3,7 @@ addpath('functions\');
 addpath('sections\');
 
 %% 1. CONFIGURATION & PARAMETERS
-diary('sg_2026.09.10_5.txt');
+diary('SG_2026.09.22_sweeps_p3.txt');
 
 conf = get_configuration();
 num_iterations = 50;
@@ -213,13 +213,13 @@ end
 fprintf('=========================================================================================\n');
 
 %% 5. SAVE RESULTS TO MAT-FILE
-output_dir = 'sg_window_2026.09.10_5_50s';
+output_dir = '2026.09.22_v1';
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end
 
 timestamp = datestr(now, 'yyyy-mm-dd_HHMMSS');
-filename  = fullfile(output_dir, sprintf('sg_report_%s.mat', timestamp));
+filename  = fullfile(output_dir, sprintf('SG_sweeps_report_%s.mat', timestamp));
 
 % Save statistical results + spatial variables and last generated profile/trace
 save(filename, ...

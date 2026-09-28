@@ -244,7 +244,6 @@ for f_idx = 1:Nf
     %   lasercw() returns a complex envelope whose phase executes a Wiener
     %   process with diffusion rate proportional to the laser linewidth.
     E_laser = lasercw(t_laser, P_input_dBm, 0, linewidth, shift);
-
     
     % -------------------------------------------------------------------
     % 5.4 ROUND-TRIP FIBER ATTENUATION (BEER_LAMBERT)
@@ -266,8 +265,8 @@ for f_idx = 1:Nf
     %   Simulates the electronic noise floor (Thermal) and photon counting
     %   noise (Shot). The 'measured' flag ensures the noise power is scaled
     %   relative to the signal power.
-    E_ref(f_idx, :) = awgn(E_ref_raw, SNR_dB, 'measured');
-    E_sig(f_idx, :) = awgn(E_sig_raw, SNR_dB, 'measured');
+    E_ref(f_idx, :) = awgn(abs(E_ref_raw).^2, SNR_dB, 'measured');
+    E_sig(f_idx, :) = awgn(abs(E_sig_raw).^2, SNR_dB, 'measured');
 
     % Store noise-free and pre-noise versions for post-processing analysis
     E_ref_id(f_idx, :) = E_ref_conv;
@@ -282,8 +281,9 @@ for f_idx = 1:Nf
     %   so this extra random draw does not shift the noise stream used
     %   for the primary reference/perturbed fields. Only the calibration
     %   trace — and therefore the adaptive threshold — is affected.
-    E_laser_calib = lasercw(t_laser, P_input_dBm, 0, linewidth, shift);
-    E_ref_raw_calib = E_ref_conv .* E_laser_calib .* loss_factor;
+    
+    % E_laser_calib = lasercw(t_laser, P_input_dBm, 0, linewidth, shift);
+    E_ref_raw_calib = E_ref_conv .* E_laser .* loss_factor;
     E_ref_raw_calib_all(f_idx, :) = E_ref_raw_calib;
 end
 

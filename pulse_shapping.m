@@ -47,7 +47,7 @@ plot(t_rect_ns, v_rect, 'r--', 'LineWidth', 2, 'DisplayName', 'Ideal Rectangular
 %     end
 %     window_rc = window_rc_full / max(window_rc_full);
 %     plot(t_rc * 1e9, window_rc, 'LineWidth', 2, ...
-%         'DisplayName', sprintf('Filtro RC (f_c = %d MHz)', fc_comp/1e6));
+%         'DisplayName', sprintf('Filter RC (f_c = %d MHz)', fc_comp/1e6));
 % end
 
 
@@ -65,13 +65,13 @@ for N = order_N
 end
 
 grid on;
-xlim([-11, 21]); 
-% xlim([-7, 22])
+xlim([-11, 27]); 
+% xlim([-7, 30])
 ylim([0, 1.2]);
-set(gca, 'FontSize', 20, 'LineWidth', 1.5);
+set(gca, 'FontSize', 25, 'LineWidth', 1.5, 'FontName', 'Times New Roman');
     
-xlabel('Relative Time (ns)', 'FontSize', 20); 
-ylabel('Normalized Amplitude', 'FontSize', 20);
+xlabel('Relative Time (ns)', 'FontSize', 25, 'FontName', 'Times New Roman'); 
+ylabel('Normalized Amplitude', 'FontSize', 25, 'FontName', 'Times New Roman');
 %title('Comparison of Optical Pulse Shapes', 'FontSize', 25, 'FontWeight', 'bold');
-legend('Location', 'northeast', 'FontSize', 15);
+legend('Location', 'best', 'FontSize', 18, 'FontName', 'Times New Roman');
 hold off;

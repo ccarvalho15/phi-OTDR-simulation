@@ -3,7 +3,7 @@ addpath('functions\');
 addpath('sections\')
 
 % 1. Inicia a gravação no ficheiro desejado
-diary('blablabla.txt');
+diary('blabla.txt');
 
 %% =======================================================================
 % 1. SYSTEM CONFIGURATION & WAVEGU2IDE PROPERTIES
@@ -72,13 +72,13 @@ report(gt.theor_starts, gt.theor_ends, gt.theor_shifts, gt.theor_delta_n, ...
     conf.pert_length, conf.match_tolerance)
 
 %%
-output_dir = 'rp_window_2026.09.09';
+output_dir = '2026.09.22_v0';
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end
 
 timestamp = string(datetime('now', 'Format', 'yyyy-MM-dd_HHmmss'));
-mat_filename = fullfile(output_dir, sprintf('simulation_results_%s.mat', timestamp));
+mat_filename = fullfile(output_dir, sprintf('rp_simulation_results_%s.mat', timestamp));
 
 % Salva todo o workspace no ficheiro .mat
 save(mat_filename, ...
@@ -98,8 +98,8 @@ fprintf('\nDados salvos com sucesso em: %s\n', mat_filename);
 % the recovered frequency shifts, simulating the output of a distributed 
 % fiber sensing interrogation system.
 
-plot_results(conf, z_valid, freq_shift, smooth_freq_shift, ...
-     corr_map, lags_freq, all_locs, all_pks, threshold);
+% plot_results(conf, z_valid, freq_shift, smooth_freq_shift, ...
+%      corr_map, lags_freq, all_locs, all_pks, threshold);
 
 
 %%

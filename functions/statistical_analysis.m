@@ -1,5 +1,5 @@
-function [Precision, Sensitivity, F1] = statistical_analysis(gt, conf, ...
-    all_locs)
+function [Precision, Sensitivity, F1] = ...
+    statistical_analysis(gt, conf_sweep, all_locs, all_pks, threshold)
     %% ===================================================================
     % 8.2 STATISTICAL PERFORMANCE ANALYSIS (TP, FP, FN)
     % ====================================================================
@@ -12,7 +12,7 @@ function [Precision, Sensitivity, F1] = statistical_analysis(gt, conf, ...
     %       - False Positives (FP): Noise spikes falsely classified as 
     %       events.
 
-    match_tolerance = conf.match_tolerance;
+    match_tolerance = conf_sweep.match_tolerance;
 
     num_events = length(gt.theor_starts);
     num_detected = length(all_locs);

@@ -1,0 +1,85 @@
+ ==== PHI-OTDR SIMULATION CONFIGURATION ==== 
+Fiber Length (L):                      240 m
+Spatial Resolution (d):                1.03 m
+Total Spatial Points (Nz)              4800
+Number of Scattering Segments (M):     21
+Sampling Interval (dz):                0.050 m
+Attenuation:                           0.20 dB/km
+Attenuation Coefficient (α):           4.6052e-05 m^-1
+Average Refractive Index (n_ave):      1.456
+Operating Wavelength (lambda_0):       1550 nm
+Central frequency (nu_0)               1.9355e+14 Hz
+Pulse Width:                           10 ns
+Input Power:                           10 mW (10.0 dBm)
+Sweep Range:                           2400 MHz
+Frequency step (Δf):                   10 MHz
+Number of frequencies (Nf):            241
+Laser Linewidth (Δν):                  100.0 kHz
+System SNR:                            12 dB
+Index standard deviation (σ_n):        2.0e-06
+Number of Events:                      5
+Width of each event:                   1.50 m
+Separation between events:             4.00 m
+Sensing Zone Start:                    210 m
+Noise Threshold Multiplier:            3.0x
+Spatial Validation Radius              2.0 m
+
+Pulse shaping selection:     
+   1) RC Filter Model
+   2) Super-Gaussian Model
+   3) Rectangular Pulse
+> Option 2
+--- Starting Simulation (50 Iterations) ---
+
+Iteration  10/ 50 completed (Progress:  20.0% | Elapsed: 0.4 min | ETA: 1.4 min)
+Iteration  20/ 50 completed (Progress:  40.0% | Elapsed: 0.7 min | ETA: 1.1 min)
+Iteration  30/ 50 completed (Progress:  60.0% | Elapsed: 1.1 min | ETA: 0.7 min)
+Iteration  40/ 50 completed (Progress:  80.0% | Elapsed: 1.4 min | ETA: 0.4 min)
+Iteration  50/ 50 completed (Progress: 100.0% | Elapsed: 1.8 min | ETA: 0.0 min)
+
+=========================================================================================
+                                COMPARISON TABLE - LOCALIZATION
+=========================================================================================
+Event    | Theoretical (m)  | Err. Center (m) | Err. Width (m) | Rel. Error (%)    
+-----------------------------------------------------------------------------------------
+Event 1  | [212.00; 213.50] | -0.5800         | 0.1210         | 8.07              %
+Event 2  | [217.50; 219.00] | -0.6130         | 0.2670         | 17.80             %
+Event 3  | [223.00; 224.50] | -0.6330         | 0.3230         | 21.53             %
+Event 4  | [228.50; 230.00] | -0.5710         | 0.5130         | 34.20             %
+Event 5  | [234.00; 235.50] | -0.6570         | -0.0510        | -3.40             %
+
+=========================================================================================
+                        COMPARISON TABLE - FREQUENCY SHIFT (MHz)
+=========================================================================================
+Event    | Theoretical (MHz) | Mean (MHz)     | Std Dev       | Rel. Error (%) 
+-----------------------------------------------------------------------------------------
+Event 1  | +783.87           | +645.14        | 387.3423      | 17.70          %
+Event 2  | -653.23           | -641.09        | 63.3944       | 1.86           %
+Event 3  | +391.94           | +391.76        | 25.1674       | 0.04           %
+Event 4  | -130.65           | -127.69        | 2.3761        | 2.27           %
+Event 5  | +914.52           | +485.62        | 634.6981      | 46.90          %
+
+=========================================================================================
+                      COMPARISON TABLE - REFRACTIVE INDEX (DELTA N)
+=========================================================================================
+Event    | Theoretical       | Mean           | Std Dev       | Rel. Error (%) 
+-----------------------------------------------------------------------------------------
+Event 1  | +5.8968e-06       | +4.8532e-06    | 2.9138e-06    | 17.70          %
+Event 2  | -4.9140e-06       | -4.8227e-06    | 4.7690e-07    | 1.86           %
+Event 3  | +2.9484e-06       | +2.9471e-06    | 1.8933e-07    | 0.04           %
+Event 4  | -9.8280e-07       | -9.6054e-07    | 1.7875e-08    | 2.27           %
+Event 5  | +6.8796e-06       | +3.6532e-06    | 4.7746e-06    | 46.90          %
+
+=========================================================================================
+                      COMPARISON TABLE - TEMPERATURE VARIATION (DELTA T)
+=========================================================================================
+Event    | Theoretical (ºC)  | Mean (ºC)      | Std Dev       | Rel. Error (%) 
+-----------------------------------------------------------------------------------------
+Event 1  | +0.6000           | +0.4938        | 0.2965        | 17.70          %
+Event 2  | -0.5000           | -0.4907        | 0.0485        | 1.86           %
+Event 3  | +0.3000           | +0.2999        | 0.0193        | 0.04           %
+Event 4  | -0.1000           | -0.0977        | 0.0018        | 2.27           %
+Event 5  | +0.7000           | +0.3717        | 0.4858        | 46.90          %
+=========================================================================================
+
+Statistical report and simulation data successfully saved to: 2026.09.22_v1\SG_sweeps_report_2026-09-22_153250.mat
